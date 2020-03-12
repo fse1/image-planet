@@ -4,11 +4,6 @@
     <meta charset="utf-8" />
     <title>Site Name - The Image Sharing Site</title>
     <link rel="stylesheet" href="styles/styles.css" />
-    <style> 
-      main-content.profile {
-          white-space: pre-line; 
-      }
-  </style> 
   </head>
   <body>
     <header class="page-header">
@@ -23,42 +18,45 @@
       <a href="login.html">Login / Register</a>
     </header>
     <main class="main-content">
-      <div id="profile">
-        <h3>Mr. Person</h3>
-        <img src="images/profile_pic.png" alt="Profile picture">
-        <button>Follow</button>
-      </div>
-      <div class="image-container">
-        <div class="img-header">
-          <h3 class="img-title">Beautiful Depiction of Red</h3>
-          <h3 class="img-author">By: <a href="users.html">Mr. Person</a></h3>
+      <div class="section-dummy"></div>
+      <div>
+        <div id="profile">
+          <h3>Mr. Person</h3>
+          <img src="images/profile_pic.png" alt="Profile picture" style="max-width: 100%;">
+          <button>Follow</button>
         </div>
-        <div class="img-img">
-          <img src="images/red.png" alt="User-submitted image" />
-        </div>
-        <div class="img-footer">
-          <div class="img-bottom">
-            <h3>Description:</h3>
-            <p>Shows off the color red.</p>
-            <button>Like This Image!</button>
+        <div class="image-container">
+          <div class="img-header">
+            <h3 class="img-title">Beautiful Depiction of Red</h3>
+            <h3 class="img-author">By: <a href="users.html">Mr. Person</a></h3>
           </div>
-          <div class="comment-container">
-            <h3>Comments</h3>
-            <div class="comment-block">
-              <p class="com-author"><a href="users.html">Mr. Person</a></p>
-              <p class="com-com">This image is absolutely stunning.</p>
+          <div class="img-img">
+            <img src="images/red.png" alt="User-submitted image" />
+          </div>
+          <div class="img-footer">
+            <div class="img-bottom">
+              <h3>Description:</h3>
+              <p>Shows off the color red.</p>
+              <button>Like This Image!</button>
             </div>
-            <div class="comment-block">
-              <p class="com-author"><a href="users/1">User Name</a></p>
-              <p class="com-com">Amazing Job!</p>
-            </div>
-            <br />
-            <div class="comment-submission">
-              <form action="/submit-comment" method="post">
-                <label for="comment">Add Comment:</label>
-                <input type="text" name="comment" id="comment" size="50" />
-                <input type="submit" value="Submit" />
-              </form>
+            <div class="comment-container">
+              <h3>Comments</h3>
+              <div class="comment-block">
+                <p class="com-author"><a href="users.html">Mr. Person</a></p>
+                <p class="com-com">This image is absolutely stunning.</p>
+              </div>
+              <div class="comment-block">
+                <p class="com-author"><a href="users/1">User Name</a></p>
+                <p class="com-com">Amazing Job!</p>
+              </div>
+              <br />
+              <div class="comment-submission">
+                <form action="/submit-comment" method="post">
+                  <label for="comment">Add Comment:</label>
+                  <input type="text" name="comment" id="comment" size="50" />
+                  <input type="submit" value="Submit" />
+                </form>
+              </div>
             </div>
           </div>
         </div>
