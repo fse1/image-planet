@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <title>Content Creation</title>
+        <link rel="stylesheet" href="styles/styles.css">
+    </head>
+</html>
+<body>
+    <header class="page-header">
+        <a class="site-name" href="index.html">Homepage</a>
+        <p>Be sure to log in in order to post content!</p>
+        <a href="login.html">Login / Register</a>
+      </header>
+      <main>
+          <h3>Upload Your Content</h3>
+          <form>
+            <form action="/userPics.html" method="post" enctype="multipart/form-data">
+              <label for="img">Upload Your Hilarious PNG:</label>
+              <input type="file" id="img" name="img" accept="image/*">
+              <input type="submit">
+            </form>
+          </form>
+          <p>Don't have an account?</p>
+          <a href="register.html">Register</a>
+      </main>
+</body>
