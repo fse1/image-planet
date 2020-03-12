@@ -15,7 +15,11 @@
       <main>
           <h3>Upload Your Content</h3>
           <form>
-            <form action="/userPics.html" method="post" enctype="multipart/form-data">
+              <form action="/userPics.html" method="post" enctype="multipart/form-data">
+              <label for="fname">Title</label>
+              <input type="text" id="message" name="message">
+              <input type="submit" value="Submit">
+              <form action="/userPics.html" method="post" enctype="multipart/form-data">
               <label for="img">Upload Your Hilarious PNG:</label>
               <input type="file" id="img" name="img" accept="image/*">
               <input type="submit">
