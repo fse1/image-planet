@@ -250,16 +250,17 @@ def send_static_file(client: ClientSocketState, start_path: bytes):
 
   # trim the leading slash
   file_name = client.request.path.strip(b'/')
+  file_name2 = b'src/' + STATIC_FILE_PREFIX + b'/' + file_name
   
   # try to open the file. send 404 if cannot open the file
   try:
-    file = open(os.path.join(start_path, file_name), 'rb')
+    file = open(file_name2, 'rb')
   except OSError:
     HTTP_404(client)
     return
   
   # get the size of the file
-  file_size = os.path.getsize(os.path.join(start_path, file_name))
+  file_size = os.path.getsize(file_name2)
   
   # start forming the response
   client.response.status = 200
