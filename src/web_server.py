@@ -13,7 +13,7 @@ import select
 import multiprocessing
 
 # global constants
-SERVER_ADDRESS = '127.0.0.1'
+SERVER_ADDRESS = ''
 SERVER_PORT = 8000
 DATA_SIZE = 8192
 FILE_READ_SIZE = 10485760
