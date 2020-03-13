@@ -2,7 +2,7 @@
 <html>
     <head>
         <meta charset="utf-8">
-        <title>Login :: Image Planet</title>
+        <title>Direct Messaging :: Image Planet</title>
         <link rel="stylesheet" href="styles/styles.css">
     </head>
 </html>
@@ -19,19 +19,12 @@
       <a href="login.html">Login / Register</a>
     </header>
       <main style="margin-left: 2em;">
-          <h3>Login page</h3>
-          <form>
-              <label for="username">Username:</label>
-              <input type="text" id="username" name="username">
-              <br>
-              <br>
-              <label for="password">Password:</label>
-              <input type="password" id="password" name="password">
-              <br>
-              <br>
-              <input type="submit" value="Submit">
+        <p>User1: Hey bro wassup? I love your cool pics you're posting on Image Planet</p>
+        <p>User2: Yeah bruv it's the best I love Image Planet!!!!</p>
+          <form action="/submit-dm" method="post">
+          <label for="msg">Message</label>
+          <input type="text" id="msg" name="msg">
+          <input type="submit" value="Submit">
           </form>
-          <p>Don't have an account?</p>
-          <a href="register.html">Register</a>
       </main>
 </body>
