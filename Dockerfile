@@ -16,7 +16,7 @@ RUN apt-get install -y python3.7
 COPY . .
 
 # Change Directory
-RUN cd src/
+WORKDIR /root/src
 
 # Allow port 8000 to be accessed from outside the container
 EXPOSE 8000
