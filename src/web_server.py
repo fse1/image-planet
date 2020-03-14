@@ -250,7 +250,7 @@ def send_static_file(client: ClientSocketState, start_path: bytes):
 
   # trim the leading slash
   file_name = client.request.path.strip(b'/')
-  file_name2 = b'src/' + STATIC_FILE_PREFIX + b'/' + file_name
+  file_name2 = b'.' + STATIC_FILE_PREFIX + b'/' + file_name
   
   # try to open the file. send 404 if cannot open the file
   try:
