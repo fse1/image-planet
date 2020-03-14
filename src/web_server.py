@@ -250,17 +250,16 @@ def send_static_file(client: ClientSocketState, start_path: bytes):
 
   # trim the leading slash
   file_name = client.request.path.strip(b'/')
-  file_name2 = b'.' + STATIC_FILE_PREFIX + b'/' + file_name
   
   # try to open the file. send 404 if cannot open the file
   try:
-    file = open(file_name2, 'rb')
+    file = open(os.path.join(start_path, file_name), 'rb')
   except OSError:
     HTTP_404(client)
     return
   
   # get the size of the file
-  file_size = os.path.getsize(file_name2)
+  file_size = os.path.getsize(os.path.join(start_path, file_name))
   
   # start forming the response
   client.response.status = 200
@@ -340,4 +339,3 @@ def send_data_over_socket(data: bytes, sock: socket.socket):
 # invoke the main function when running as the main script
 if __name__ == "__main__":
   main()
-    

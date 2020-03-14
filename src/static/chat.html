@@ -2,23 +2,29 @@
 <html>
     <head>
         <meta charset="utf-8">
-        <title>Chat</title>
+        <title>Direct Messaging :: Image Planet</title>
         <link rel="stylesheet" href="styles/styles.css">
     </head>
 </html>
 <body>
     <header class="page-header">
-        <a class="site-name" href="index.html">Homepage</a>
-        <p>Talk to your friends!</p>
-        <a href="login.html">Login / Register</a>
-      </header>
-      <main>
+      <a class="site-name" href="index.html">Image Planet</a>
+      <nav>
+        <ul class="navigation">
+          <li><a href="images.html">Images</a></li>
+          <li><a href="users.html">Users</a></li>
+          <li><a href="upload-image.html">Upload Image</a></li>
+        </ul>
+      </nav>
+      <a href="login.html">Login / Register</a>
+    </header>
+      <main style="margin-left: 2em;">
         <p>User1: Hey bro wassup? I love your cool pics you're posting on Image Planet</p>
         <p>User2: Yeah bruv it's the best I love Image Planet!!!!</p>
-          <form action="/chatMessages.html" method="post" enctype="multipart/form-data">
-          <label for="fname">Message</label>
-          <input type="text" id="message" name="message">
+          <form action="/submit-dm" method="post">
+          <label for="msg">Message</label>
+          <input type="text" id="msg" name="msg">
           <input type="submit" value="Submit">
+          </form>
       </main>
-</form>
 </body>
