@@ -22,4 +22,4 @@ RUN cd src/
 EXPOSE 8000
 
 # Run the app
-CMD ["python3", "web_server.py"]
+CMD ["/usr/bin/python3", "web_server.py"]
