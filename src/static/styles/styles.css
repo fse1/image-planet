@@ -28,7 +28,7 @@ ul.navigation {
   flex: 1;
 }
 
-main.main-content {
+main.main-content-2-col {
   padding-top: 2rem;
   display: grid;
   grid-template-columns: 2% 67% 17% 2%;
@@ -37,10 +37,37 @@ main.main-content {
   margin-bottom: 1%;
 }
 
+main.main-content-1-col {
+  padding-top: 2rem;
+  display: grid;
+  grid-template-columns: 10% 80% 10%;
+  height: auto;
+  margin-bottom: 1%;
+}
+
 main div.section-main {
   background-color: #f2f2f2;
   padding-left: 0.5rem;
   padding-right: 0.5rem;
+}
+
+main div.section-main-gallery {
+  text-align: center;
+  background-color: #f2f2f2;
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+  margin-left: 2rem;
+  margin-right: 2rem;
+}
+
+main div.section-main-gallery h2 {
+  padding-top: 0.5rem;
+}
+
+main div.section-main-gallery img {
+  width: 20%;
+  padding-right: 0.5rem;
+  padding-bottom: 0.5rem;
 }
 
 main .image-container {
@@ -99,10 +126,28 @@ main .image-container .img-footer .comment-block .com-author {
   margin: 0px 0px 0px 0px;
 }
 
+main .message-window {
+  border: 0.15rem solid black;
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+}
+
 footer.page-footer {
   display: flex;
   background-color: #f2f2f2;
   height: 2rem;
   align-items: center;
   justify-content: space-around;
+}
+
+main .option-menu {
+  text-align: center;
+}
+
+main .option-button {
+  width: 100%;
+  height: 2.5rem;
+  margin-bottom: 0.5rem;
 }
