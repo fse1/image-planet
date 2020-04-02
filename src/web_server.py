@@ -8,3 +8,6 @@ app = Flask(__name__)
 def send_home_page():
   return redirect(url_for('static', filename='index.html'))
 
+# remove for deployment
+if __name__ == "__main__":
+    app.run()
