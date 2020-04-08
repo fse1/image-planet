@@ -28,22 +28,18 @@ Use the following commands for the database.
                                      imgfile TEXT NOT NULL,
                                      imgdesc TEXT,
                                      likes BIGINT NOT NULL);
-* CREATE TABLE IF NOT EXISTS comments (comid BIGINT PRIMARY KEY AUTO_INCREMENT NOT NULL, 
-                                       imageid BIGINT NOT NULL,
+* CREATE TABLE IF NOT EXISTS comments (imageid BIGINT NOT NULL,
                                        userid BIGINT NOT NULL, 
                                        comtext TEXT NOT NULL);    
 * CREATE TABLE IF NOT EXISTS directmsg (dmid BIGINT PRIMARY KEY AUTO_INCREMENT NOT NULL,
                                         lowuserid BIGINT NOT NULL, 
                                         highuserid BIGINT NOT NULL); 
-* CREATE TABLE IF NOT EXISTS messages (msgid BIGINT PRIMARY KEY AUTO_INCREMENT NOT NULL, 
-                                       dmid BIGINT NOT NULL,
+* CREATE TABLE IF NOT EXISTS messages (dmid BIGINT NOT NULL,
                                        userid BIGINT NOT NULL, 
                                        msgtext TEXT NOT NULL);                                         
-* CREATE TABLE IF NOT EXISTS followers (followid BIGINT PRIMARY KEY AUTO_INCREMENT NOT NULL, 
-                                        userid BIGINT NOT NULL, 
+* CREATE TABLE IF NOT EXISTS followers (userid BIGINT NOT NULL, 
                                         followingthisuserid BIGINT NOT NULL); 
-* CREATE TABLE IF NOT EXISTS likes (likeid BIGINT PRIMARY KEY AUTO_INCREMENT NOT NULL, 
-                                    userid BIGINT NOT NULL, 
+* CREATE TABLE IF NOT EXISTS likes (userid BIGINT NOT NULL, 
                                     likesthisimageid BIGINT NOT NULL);                                          
                                         
                                     
