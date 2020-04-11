@@ -151,3 +151,11 @@ main .option-button {
   height: 2.5rem;
   margin-bottom: 0.5rem;
 }
+
+.error-text {
+  color: #ff8080;
+}
+
+.success-text {
+  color: #008000;
+}
