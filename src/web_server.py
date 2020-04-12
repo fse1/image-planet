@@ -15,11 +15,117 @@ app = Flask(__name__)
 app.config.update(DB_USER='root', DB_HOST='127.0.0.1', DB_PASS=(os.environ['DB_PASS']), DB_NAME='imageplanet', DB_PARAM='db')       # database information
 app.config['UPLOAD_DIRECTORY'] = 'user-images'                                                                                      # upload image directory
 app.config['MAX_CONTENT_LENGTH'] = 15 * 1024 * 1024                                                                                 # max file size (15 MB)
+app.config['MAX_COMMENT_LENGTH'] = 50                                                                                               # max length of comment
+
+
+# define a class to hold information about images
+class ImageInfo():
+
+  def __init__(self):
+    self.id = 0
+    self.userid = 0
+    self.title = ''
+    self.username = ''
+    self.path = ''
+    self.likes = 0
+    self.description = ''
+    self.comments = []
+   
+# define a class to hold information about user messages
+class MessageInfo():
+
+  def __init__(self):
+    self.userid = 0
+    self.username = ''
+    self.message = ''
+
 
 # handle home page
 @app.route('/')
-def send_home_page():
-  return redirect(url_for('static', filename='index.html'))
+def generate_home_page():
+
+  # get the database if it does not exist
+  if not (app.config['DB_PARAM'] in g):
+    g.setdefault(app.config['DB_PARAM'], default=get_database(app.config['DB_NAME']))
+  db = g.get(app.config['DB_PARAM'])
+  db_cursor = db.cursor()
+  
+  follow = []
+  recent = []
+  
+  db_cursor.execute('SELECT imageid, imgtitle, userid, imgfile, imgdesc, likes FROM images ORDER BY imageid DESC LIMIT 3')
+  
+  # get data on the lastest three images
+  for (imageid, imgtitle, userid, imgfile, imgdesc, likes) in db_cursor:
+    image = ImageInfo()
+    image.id = imageid
+    image.userid = userid
+    image.title = imgtitle
+    image.username = 'Anonymous User'
+    image.path = url_for('send_user_image', img_name=imgfile)
+    image.likes = likes
+    image.description = imgdesc
+    recent.append(image)
+  
+  # now get the comments for each recent image
+  for image in recent:
+    db_cursor.execute('SELECT userid, comtext FROM comments WHERE imageid=%s', (image.id,))
+    for (userid, comtext) in db_cursor:
+      com = MessageInfo()
+      com.userid = userid
+      com.username = 'Anonymous User'
+      com.message = comtext
+      image.comments.append(com)
+  
+  return render_template('index.html', follower_images=follow, recent_images=recent)
+  
+@app.route('/submit-comment', methods=['POST'])
+def process_comment():
+  
+  # get the database if it does not exist
+  if not (app.config['DB_PARAM'] in g):
+    g.setdefault(app.config['DB_PARAM'], default=get_database(app.config['DB_NAME']))
+  db = g.get(app.config['DB_PARAM'])
+  db_cursor = db.cursor()
+  
+  imageid = request.form['imgid']
+  comtext = request.form['comment'].strip()
+  
+  if len(comtext) > app.config['MAX_COMMENT_LENGTH']:
+    return 'Comment too long!', 400
+  
+  # make sure the image exists
+  db_cursor.execute('SELECT userid FROM images WHERE imageid=%s', (imageid,))
+  if (len(db_cursor.fetchall())) != 1:
+    return 'Image does not exist!', 400
+  
+  # now add the comment to the database
+  db_cursor.execute('INSERT INTO comments (imageid, userid, comtext) VALUES (%s, 0, %s)', (imageid, comtext))
+  db.commit()
+  
+  return 'Successfully submitted comment!'
+  
+@app.route('/submit-like', methods=['POST'])
+def process_like():
+
+  # get the database if it does not exist
+  if not (app.config['DB_PARAM'] in g):
+    g.setdefault(app.config['DB_PARAM'], default=get_database(app.config['DB_NAME']))
+  db = g.get(app.config['DB_PARAM'])
+  db_cursor = db.cursor()
+  
+  imageid = request.form['imgid']
+
+  # make sure the image exists
+  db_cursor.execute('SELECT userid FROM images WHERE imageid=%s', (imageid,))
+  if (len(db_cursor.fetchall())) != 1:
+    return 'Image does not exist!', 400
+  
+  # now increment the like count
+  db_cursor.execute('UPDATE images SET likes=likes+1 WHERE imageid=%s', (imageid,))
+  db.commit()
+  
+  return 'Successfully submitted like!'
   
 # handle image upload form
 @app.route('/upload-image', methods=['GET', 'POST'])
