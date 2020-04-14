@@ -2,11 +2,10 @@
 <html>
   <head>
     <meta charset="utf-8" />
-    <title>Image Planet - The World's Greatest Image Sharing Site</title>
+    <title>{{ user.name }}'s Profile :: Image Planet</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles/styles.css') }}" />
     <script src="{{ url_for('static', filename='scripts/socket.io.js') }}"></script>
     <script src="{{ url_for('static', filename='scripts/comment-like-script.js') }}"></script>
-    <script src="{{ url_for('static', filename='scripts/socket-index.js') }}"></script>
   </head>
   <body>
     <header class="page-header">
@@ -23,22 +22,14 @@
     <main class="main-content-2-col">
       <div class="section-dummy"></div>
       <div class="section-main">
-        <div>
-          <h1>Welcome to Image Planet!</h1>
-          <h3>The best image sharing site in the world!</h3>
+        <div id="profile">
+          <h2>{{ user.name }}</h2>
+          <img src="images/profile_pic.png" alt="Profile picture" style="max-width: 20%;" />
+          <p>{{ user.profile_text }}</p>
         </div>
-        <hr />
-        <div>
-          <h2>Latest Images By Your Followed Users</h2>
-          {% for image in follower_images %}
-            <p>TODO</p>
-          {% else %}
-            <p>You are not following anyone yet ):</p>
-          {% endfor %}
-        </div>
-        <div class="recent-image-container">
-          <h2>Most Recent Images</h2>
-          {% for image in recent_images %}
+        <br />
+        <h3>Uploaded Images</h3>
+        {% for image in images %}
             <div class="image-container" id="user-{{ image.userid }}-img-{{ image.id }}">
               <div class="img-header">
                 <h3 class="img-title">{{ image.title }}</h3>
@@ -83,21 +74,16 @@
           {% else %}
             <p>No images have been uploaded yet ):</p>
           {% endfor %}
-        </div>
       </div>
       <div class="section-main">
-        <h2>Poll</h2>
-        <h3>How Often Do You Visit This Site?</h3>
-        <form action="/submit-poll" method="post">
-          <input type="radio" id="everyday" name="poll" value="everyday"/><label for="everyday">Every Day</label><br />
-          <input type="radio" id="week" name="poll" value="week"/><label for="week">A Few Times A Week</label><br />
-          <input type="radio" id="month" name="poll" value="month"/><label for="month">A Few Times A Month</label><br />
-          <input type="radio" id="year" name="poll" value="year"/><label for="year">A Few Times A Year</label><br />
-          <input type="submit" value="Submit" />
-        </form>
+        <div class="option-menu">
+          <h2>Actions</h2>
+          <button class="option-button">Follow</button><br />
+          <a href="{{ url_for('generate_direct_message_page') }}"><button class="option-button">Direct Message</button></a>
+        </div>
       </div>
       <div class="section-dummy"></div>
-    </main>
+    </main> 
     <footer class="page-footer">
           <p>&copy;2020 Image Planet</p>
     </footer>

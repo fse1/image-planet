@@ -10,12 +10,12 @@
       <a class="site-name" href="{{ url_for('generate_home_page') }}">Image Planet</a>
       <nav>
         <ul class="navigation">
-          <li><a href="images.html">Images</a></li>
-          <li><a href="users.html">Users</a></li>
+          <li><a href="{{ url_for('generate_image_gallery') }}">Images</a></li>
+          <li><a href="{{ url_for('generate_user_list') }}">Users</a></li>
           <li><a href="{{ url_for('handle_image_upload') }}">Upload Image</a></li>
         </ul>
       </nav>
-      <a href="login.html">Login / Register</a>
+      <a href="{{ url_for('display_login_register_page') }}">Login / Register</a>
     </header>
       <main class="main-content-1-col">
         <div class="section-dummy"></div>

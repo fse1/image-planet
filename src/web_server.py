@@ -2,7 +2,8 @@
 
 import sys
 import os
-from flask import Flask, url_for, redirect, g, render_template, request, safe_join, send_from_directory
+from flask import Flask, url_for, redirect, g, render_template, request, safe_join, send_from_directory, escape, json
+from flask_socketio import SocketIO, join_room
 import mysql.connector
 import hashlib
 
@@ -16,6 +17,7 @@ app.config.update(DB_USER='root', DB_HOST='127.0.0.1', DB_PASS=(os.environ['DB_P
 app.config['UPLOAD_DIRECTORY'] = 'user-images'                                                                                      # upload image directory
 app.config['MAX_CONTENT_LENGTH'] = 15 * 1024 * 1024                                                                                 # max file size (15 MB)
 app.config['MAX_COMMENT_LENGTH'] = 50                                                                                               # max length of comment
+new_app = SocketIO(app)
 
 
 # define a class to hold information about images
@@ -38,6 +40,14 @@ class MessageInfo():
     self.userid = 0
     self.username = ''
     self.message = ''
+    
+# define a class to hold information about users
+class UserInfo():
+
+  def __init__(self):
+    self.id = 0
+    self.name = ''
+    self.profile_text = ''
 
 
 # handle home page
@@ -127,6 +137,97 @@ def process_like():
   
   return 'Successfully submitted like!'
   
+# handle sending all images
+@app.route('/images')
+def generate_image_gallery():
+
+  # get the database if it does not exist
+  if not (app.config['DB_PARAM'] in g):
+    g.setdefault(app.config['DB_PARAM'], default=get_database(app.config['DB_NAME']))
+  db = g.get(app.config['DB_PARAM'])
+  db_cursor = db.cursor()
+  
+  display_images = []
+  
+  db_cursor.execute('SELECT userid, imgfile FROM images')
+  
+  # get data on each image
+  for (userid, imgfile) in db_cursor:
+    image = ImageInfo()
+    image.userid = userid
+    image.path = url_for('send_user_image', img_name=imgfile)
+    display_images.append(image)
+  
+  return render_template('images.html', images=display_images)
+  
+# handle sending user list
+@app.route('/users')
+def generate_user_list():
+  
+  user_list = []
+  
+  user = UserInfo()
+  user.id = 0
+  user.name = 'Anonymous User'
+  user_list.append(user)
+  
+  return render_template('userlist.html', users=user_list)
+  
+  
+# handle sending user profile page
+@app.route('/users/0')
+def generate_user_page():
+  
+  # get the database if it does not exist
+  if not (app.config['DB_PARAM'] in g):
+    g.setdefault(app.config['DB_PARAM'], default=get_database(app.config['DB_NAME']))
+  db = g.get(app.config['DB_PARAM'])
+  db_cursor = db.cursor()
+  
+  user = UserInfo()
+  user.id = 0
+  user.name = 'Anonymous User'
+  user.profile_text = 'No profile description.'
+  
+  image_list = []
+  
+  db_cursor.execute('SELECT imageid, imgtitle, imgfile, imgdesc, likes FROM images')
+  
+  # get data on all images
+  for (imageid, imgtitle, imgfile, imgdesc, likes) in db_cursor:
+    image = ImageInfo()
+    image.id = imageid
+    image.userid = user.id
+    image.title = imgtitle
+    image.username = user.name
+    image.path = url_for('send_user_image', img_name=imgfile)
+    image.likes = likes
+    image.description = imgdesc
+    image_list.append(image)
+  
+  # now get the comments for each recent image
+  for image in image_list:
+    db_cursor.execute('SELECT userid, comtext FROM comments WHERE imageid=%s', (image.id,))
+    for (userid, comtext) in db_cursor:
+      com = MessageInfo()
+      com.userid = userid
+      com.username = 'Anonymous User'
+      com.message = comtext
+      image.comments.append(com)
+  
+  return render_template('user.html', user=user, images=image_list)
+  
+# handle display of the login/registration form
+@app.route('/login-or-register')
+def display_login_register_page():
+  return render_template('login.html')
+  
+# handle display of direct messaging
+@app.route('/direct-msg')
+def generate_direct_message_page():
+
+  return render_template('chat.html')
+
 # handle image upload form
 @app.route('/upload-image', methods=['GET', 'POST'])
 def handle_image_upload():
@@ -181,6 +282,21 @@ def handle_image_upload():
     db_cursor.execute('INSERT INTO images (userid, imgtitle, imgfile, imgdesc, likes) VALUES (0, %s, %s, %s, 0)', (title, img_filename, description))
     db.commit()
     
+    # generate data to send over websocket connection
+    send_data = {}
+    image_data = ImageInfo()
+    image_data.id = db_cursor.lastrowid
+    image_data.userid = 0
+    image_data.title = title
+    image_data.username = 'Anonymous User'
+    image_data.path = url_for('send_user_image', img_name=img_filename)
+    image_data.likes = 0
+    image_data.description = description
+    send_data['userid'] = image_data.userid
+    send_data['html'] = render_template('one-image.html', image=image_data)
+    new_app.emit('new-image-full', send_data, room='general-notifications')
+    
+    
     return render_template('upload-image.html', error_str='', success_str=(url_for('send_user_image', img_name=img_filename)))
 
 
@@ -189,6 +305,11 @@ def handle_image_upload():
 def send_user_image(img_name):
   return send_from_directory(app.config['UPLOAD_DIRECTORY'], img_name)
     
+# handle joining general rooms
+@new_app.on('join-general-room')
+def join_general_room():
+  join_room('general-notifications')
+
 
 @app.cli.command('init-db')
 def init_database():

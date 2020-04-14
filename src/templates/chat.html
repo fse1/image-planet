@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <title>Direct Messaging :: Image Planet</title>
+        <link rel="stylesheet" href="{{ url_for('static', filename='styles/styles.css') }}">
+    </head>
+</html>
+<body>
+    <header class="page-header">
+      <a class="site-name" href="{{ url_for('generate_home_page') }}">Image Planet</a>
+      <nav>
+        <ul class="navigation">
+          <li><a href="{{ url_for('generate_image_gallery') }}">Images</a></li>
+          <li><a href="{{ url_for('generate_user_list') }}">Users</a></li>
+          <li><a href="{{ url_for('handle_image_upload') }}">Upload Image</a></li>
+        </ul>
+      </nav>
+      <a href="{{ url_for('display_login_register_page') }}">Login / Register</a>
+    </header>
+      <main class="main-content-1-col">
+        <div class="section-dummy"></div>
+        <div class="section-main">
+          <div class="message-window">
+            <div class="message-block">
+              <p class="msg"><a href="users/1">User1</a>: Hey bro wassup? I love your cool pics you're posting on Image Planet.</p>
+            </div>
+            <div class="message-block">
+              <p class="msg"><a href="users/1">User2</a>: Yeah bruv it's the best I love Image Planet!!!!</p>
+            </div>
+          </div>
+          <div class="write-message-window">
+            <form action="/submit-dm" method="post">
+            <label for="msg">Message:</label>
+            <input type="text" id="msg" name="msg" size="50">
+            <input type="submit" value="Send">
+            </form>
+          </div>
+          <br />
+        </div>
+        <div class="section-dummy"></div>
+      </main>
+</body>
