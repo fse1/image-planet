@@ -5,6 +5,7 @@
     <title>Images :: Image Planet</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles/styles.css') }}" />
     <script src="{{ url_for('static', filename='scripts/socket.io.js') }}"></script>
+    <script src="{{ url_for('static', filename='scripts/socket-images.js') }}"></script>
   </head>
   <body>
     <header class="page-header">
@@ -24,7 +25,7 @@
         {% for image in images %}
           <a href="users/{{ image.userid }}"><img src="{{ image.path }}" alt="User-submitted image" /></a>
         {% else %}
-          <p>No images have been uploaded yet ):</p>
+          <p class="no-images">No images have been uploaded yet ):</p>
         {% endfor %}
       </div>
     </main>  

@@ -2,7 +2,7 @@ CREATE DATABASE IF NOT EXISTS imageplanet;
 USE imageplanet;
 CREATE TABLE IF NOT EXISTS users (userid BIGINT PRIMARY KEY AUTO_INCREMENT NOT NULL,
                                     username TEXT UNIQUE NOT NULL,
-                                    profilepic BIGINT,
+                                    profilepic TEXT,
                                     profiledesc TEXT,
                                     salt TEXT NOT NULL,
                                     passhash TEXT NOT NULL,

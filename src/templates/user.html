@@ -6,6 +6,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='styles/styles.css') }}" />
     <script src="{{ url_for('static', filename='scripts/socket.io.js') }}"></script>
     <script src="{{ url_for('static', filename='scripts/comment-like-script.js') }}"></script>
+    <script src="{{ url_for('static', filename='scripts/socket-user.js') }}"></script>
   </head>
   <body>
     <header class="page-header">
@@ -22,14 +23,16 @@
     <main class="main-content-2-col">
       <div class="section-dummy"></div>
       <div class="section-main">
-        <div id="profile">
+        <div class="profile">
           <h2>{{ user.name }}</h2>
           <img src="images/profile_pic.png" alt="Profile picture" style="max-width: 20%;" />
           <p>{{ user.profile_text }}</p>
+          <input type="hidden" name="userid" class="user-id" value="{{ user.id }}" />
         </div>
         <br />
-        <h3>Uploaded Images</h3>
-        {% for image in images %}
+        <div class="upload-image-container">
+          <h3>Uploaded Images</h3>
+          {% for image in images %}
             <div class="image-container" id="user-{{ image.userid }}-img-{{ image.id }}">
               <div class="img-header">
                 <h3 class="img-title">{{ image.title }}</h3>
@@ -72,8 +75,9 @@
               </div>
             </div>
           {% else %}
-            <p>No images have been uploaded yet ):</p>
+            <p class="no-images">No images have been uploaded yet ):</p>
           {% endfor %}
+        </div>
       </div>
       <div class="section-main">
         <div class="option-menu">

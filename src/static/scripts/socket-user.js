@@ -3,7 +3,8 @@
 document.addEventListener('DOMContentLoaded', function () {
     
     // get needed elements
-    const recentContainer = document.querySelector('div.recent-image-container');
+    const uploadContainer = document.querySelector('div.upload-image-container');
+    const userID = (document.querySelector('div.profile input.user-id')).value;
     
     // create socket
     let socket = io();
@@ -11,26 +12,30 @@ document.addEventListener('DOMContentLoaded', function () {
     // join general notification room
     socket.emit('join-general-room');
 
-    // handle new images. append to top of recent images
+    // handle new images. append to bottom of uploaded images
     socket.on('new-image-full', function (data) { 
     
-      // handle the no image case
-      const noImage = document.querySelectorAll('.recent-image-container p.no-recent-images');
-      if (noImage.length > 0) {
-        noImage.outerHTML = data.html;
-      }
-      else
+      // make sure it is this user's image
+      if (data.userid == userID)
       {
-        let newImageContainer = document.createElement("div");
-        recentContainer.insertBefore(newImageContainer, recentContainer.childNodes[3]);
-        newImageContainer.outerHTML = data.html;
+        // handle the no image case
+        const noImage = document.querySelectorAll('.upload-image-container p.no-images');
+        if (noImage.length > 0) {
+          noImage.outerHTML = data.html;
+        }
+        else
+        {
+          let newImageContainer = document.createElement("div");
+          uploadContainer.appendChild(newImageContainer);
+          newImageContainer.outerHTML = data.html;
+        }
+        
+        // now set up the AJAX handlers
+        const likeBtn = document.querySelector('#user-' + data.userid + '-img-' + data.imageid + ' button.like-btn');
+        const commentSubmit = document.querySelector('#user-' + data.userid + '-img-' + data.imageid + ' input.submit-comment-btn');
+        likeBtn.onclick = likeClick;
+        commentSubmit.onclick = comClick;
       }
-      
-      // now set up the AJAX handlers
-      const likeBtn = document.querySelector('#user-' + data.userid + '-img-' + data.imageid + ' button.like-btn');
-      const commentSubmit = document.querySelector('#user-' + data.userid + '-img-' + data.imageid + ' input.submit-comment-btn');
-      likeBtn.onclick = likeClick;
-      commentSubmit.onclick = comClick;
       
     });
     

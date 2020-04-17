@@ -7,16 +7,18 @@ from flask_socketio import SocketIO, join_room
 import mysql.connector
 import hashlib
 
-# try and get the database password from env variable
+# try and get the database password and username from env variable
+if not ('DB_USER' in os.environ):
+  raise ValueError('Cannot find environment variable "DB_USER"')
 if not ('DB_PASS' in os.environ):
   raise ValueError('Cannot find environment variable "DB_PASS"')
 
 # create and configure the Flask application
 app = Flask(__name__)
-app.config.update(DB_USER='root', DB_HOST='127.0.0.1', DB_PASS=(os.environ['DB_PASS']), DB_NAME='imageplanet', DB_PARAM='db')       # database information
-app.config['UPLOAD_DIRECTORY'] = 'user-images'                                                                                      # upload image directory
-app.config['MAX_CONTENT_LENGTH'] = 15 * 1024 * 1024                                                                                 # max file size (15 MB)
-app.config['MAX_COMMENT_LENGTH'] = 50                                                                                               # max length of comment
+app.config.update(DB_USER=(os.environ['DB_USER']), DB_HOST='127.0.0.1', DB_PASS=(os.environ['DB_PASS']), DB_NAME='imageplanet', DB_PARAM='db')        # database information
+app.config['UPLOAD_DIRECTORY'] = 'user-images'                                                                                                        # upload image directory
+app.config['MAX_CONTENT_LENGTH'] = 15 * 1024 * 1024                                                                                                   # max file size (15 MB)
+app.config['MAX_COMMENT_LENGTH'] = 50                                                                                                                 # max length of comment
 new_app = SocketIO(app)
 
 
@@ -113,6 +115,16 @@ def process_comment():
   db_cursor.execute('INSERT INTO comments (imageid, userid, comtext) VALUES (%s, 0, %s)', (imageid, comtext))
   db.commit()
   
+  # now send the new comment to all connected clients
+  send_data = {}
+  com_info = MessageInfo()
+  com_info.userid = 0
+  com_info.username = 'Anonymous User'
+  com_info.message = comtext
+  send_data['imageid'] = imageid
+  send_data['html'] = render_template('one-comment.html', comment=com_info)
+  new_app.emit('new-comment-full', send_data, room='general-notifications')
+  
   return 'Successfully submitted comment!'
   
 @app.route('/submit-like', methods=['POST'])
@@ -134,6 +146,11 @@ def process_like():
   # now increment the like count
   db_cursor.execute('UPDATE images SET likes=likes+1 WHERE imageid=%s', (imageid,))
   db.commit()
+  
+  # now send the new like to all connected clients
+  send_data = {}
+  send_data['imageid'] = imageid
+  new_app.emit('new-like', send_data, room='general-notifications')
   
   return 'Successfully submitted like!'
   
@@ -293,7 +310,9 @@ def handle_image_upload():
     image_data.likes = 0
     image_data.description = description
     send_data['userid'] = image_data.userid
+    send_data['imageid'] = image_data.id
     send_data['html'] = render_template('one-image.html', image=image_data)
+    send_data['thumbnailhtml'] = render_template('one-image-thumbnail.html', image=image_data)
     new_app.emit('new-image-full', send_data, room='general-notifications')
     
     
