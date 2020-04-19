@@ -21,7 +21,7 @@ document.addEventListener('DOMContentLoaded', function () {
         // handle the no image case
         const noImage = document.querySelectorAll('.upload-image-container p.no-images');
         if (noImage.length > 0) {
-          noImage.outerHTML = data.html;
+          noImage[0].outerHTML = data.html;
         }
         else
         {

@@ -17,7 +17,7 @@ document.addEventListener('DOMContentLoaded', function () {
       // handle the no image case
       const noImage = document.querySelectorAll('.recent-image-container p.no-recent-images');
       if (noImage.length > 0) {
-        noImage.outerHTML = data.html;
+        noImage[0].outerHTML = data.html;
       }
       else
       {

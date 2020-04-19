@@ -17,7 +17,7 @@ document.addEventListener('DOMContentLoaded', function () {
       // handle the no image case
       const noImage = document.querySelectorAll('.section-main-gallery p.no-images');
       if (noImage.length > 0) {
-        noImage.outerHTML = data.thumbnailhtml;
+        noImage[0].outerHTML = data.thumbnailhtml;
       }
       else
       {
