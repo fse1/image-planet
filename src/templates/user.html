@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>{{ user.name }}'s Profile :: Image Planet</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles/styles.css') }}" />
+    <script src="{{ url_for('static', filename='scripts/socket.io.js') }}"></script>
+    <script src="{{ url_for('static', filename='scripts/comment-like-script.js') }}"></script>
+    <script src="{{ url_for('static', filename='scripts/socket-user.js') }}"></script>
+  </head>
+  <body>
+    <header class="page-header">
+      <a class="site-name" href="{{ url_for('generate_home_page') }}">Image Planet</a>
+      <nav>
+        <ul class="navigation">
+          <li><a href="{{ url_for('generate_image_gallery') }}">Images</a></li>
+          <li><a href="{{ url_for('generate_user_list') }}">Users</a></li>
+          <li><a href="{{ url_for('handle_image_upload') }}">Upload Image</a></li>
+        </ul>
+      </nav>
+      <a href="{{ url_for('display_login_register_page') }}">Login / Register</a>
+    </header>
+    <main class="main-content-2-col">
+      <div class="section-dummy"></div>
+      <div class="section-main">
+        <div class="profile">
+          <h2>{{ user.name }}</h2>
+          <img src="images/profile_pic.png" alt="Profile picture" style="max-width: 20%;" />
+          <p>{{ user.profile_text }}</p>
+          <input type="hidden" name="userid" class="user-id" value="{{ user.id }}" />
+        </div>
+        <br />
+        <div class="upload-image-container">
+          <h3>Uploaded Images</h3>
+          {% for image in images %}
+            <div class="image-container" id="user-{{ image.userid }}-img-{{ image.id }}">
+              <div class="img-header">
+                <h3 class="img-title">{{ image.title }}</h3>
+                <h3 class="img-author">By: <a href="users/{{ image.userid }}">{{ image.username }}</a></h3>
+              </div>
+              <div class="img-img">
+                <img src="{{ image.path }}" alt="User-submitted image" />
+              </div>
+              <div class="img-footer">
+                <div class="img-bottom">
+                  <h3>Description:</h3>
+                  <p>{{ image.description }}</p>
+                  <form action="{{ url_for('process_like') }}" method="post" enctype="multipart/form-data">
+                    <input type="hidden" name="imgid" value="{{ image.id }}" />
+                    <button class="like-btn" id="like-{{ image.id }}">Like This Image! ({{ image.likes }})</button>
+                  </form>
+                </div>
+                <div class="comment-container">
+                  <h3>Comments</h3>
+                  <div id="com-block-{{ image.id }}">
+                    {% for comment in image.comments %}
+                      <div class="comment-block">
+                        <p class="com-author"><a href="users/{{ comment.userid }}">{{ comment.username }}</a></p>
+                        <p class="com-com">{{ comment.message }}</p>
+                      </div>
+                    {% else %}
+                      <p>No comments yet.</p>
+                    {% endfor %}
+                  </div>
+                  <br />
+                  <div class="comment-submission">
+                    <form action="{{ url_for('process_comment') }}" method="post" enctype="multipart/form-data">
+                      <input type="hidden" name="imgid" value="{{ image.id }}" />
+                      <label for="comment">Add Comment:</label>
+                      <input type="text" name="comment" id="comment" size="50" />
+                      <input type="submit" value="Submit" class="submit-comment-btn" />
+                    </form>
+                  </div>
+                </div>
+              </div>
+            </div>
+          {% else %}
+            <p class="no-images">No images have been uploaded yet ):</p>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="section-main">
+        <div class="option-menu">
+          <h2>Actions</h2>
+          <button class="option-button">Follow</button><br />
+          <a href="{{ url_for('generate_direct_message_page') }}"><button class="option-button">Direct Message</button></a>
+        </div>
+      </div>
+      <div class="section-dummy"></div>
+    </main> 
+    <footer class="page-footer">
+          <p>&copy;2020 Image Planet</p>
+    </footer>
+  </body>
+</html>

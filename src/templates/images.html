@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Images :: Image Planet</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles/styles.css') }}" />
+    <script src="{{ url_for('static', filename='scripts/socket.io.js') }}"></script>
+    <script src="{{ url_for('static', filename='scripts/socket-images.js') }}"></script>
+  </head>
+  <body>
+    <header class="page-header">
+      <a class="site-name" href="{{ url_for('generate_home_page') }}">Image Planet</a>
+      <nav>
+        <ul class="navigation">
+          <li><a href="{{ url_for('generate_image_gallery') }}">Images</a></li>
+          <li><a href="{{ url_for('generate_user_list') }}">Users</a></li>
+          <li><a href="{{ url_for('handle_image_upload') }}">Upload Image</a></li>
+        </ul>
+      </nav>
+      <a href="{{ url_for('display_login_register_page') }}">Login / Register</a>
+    </header>
+    <main>
+      <div class="section-main-gallery">
+        <h2>Image Gallery</h2>
+        {% for image in images %}
+          <a href="users/{{ image.userid }}"><img src="{{ image.path }}" alt="User-submitted image" /></a>
+        {% else %}
+          <p class="no-images">No images have been uploaded yet ):</p>
+        {% endfor %}
+      </div>
+    </main>  
+  </body>
+</html>

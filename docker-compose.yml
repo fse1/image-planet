@@ -1,0 +1,18 @@
+version: '3.3'
+services:
+  mariadb: 
+    image: mariadb:10.4-bionic
+    environment:
+      MYSQL_ROOT_PASSWORD: some-password
+      MYSQL_DATABASE: imageplanet
+      MYSQL_USER: someuser
+      MYSQL_PASSWORD: change-this-password
+  app:
+    build: .
+    environment:
+      WAIT_HOSTS: mariadb:3306
+      WAIT_HOSTS_TIMEOUT: 240
+      DB_USER: someuser
+      DB_PASS: change-this-password
+    ports:
+      - '8080:5000'
