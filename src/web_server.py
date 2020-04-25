@@ -15,7 +15,7 @@ if not ('DB_PASS' in os.environ):
 
 # create and configure the Flask application
 app = Flask(__name__)
-app.config.update(DB_USER=(os.environ['DB_USER']), DB_HOST='mariadb', DB_PASS=(os.environ['DB_PASS']), DB_NAME='imageplanet', DB_PARAM='db')          # database information
+app.config.update(DB_USER=(os.environ['DB_USER']), DB_HOST='127.0.0.1', DB_PASS=(os.environ['DB_PASS']), DB_NAME='imageplanet', DB_PARAM='db')          # database information
 app.config['UPLOAD_DIRECTORY'] = 'user-images'                                                                                                        # upload image directory
 app.config['MAX_CONTENT_LENGTH'] = 15 * 1024 * 1024                                                                                                   # max file size (15 MB)
 app.config['MAX_COMMENT_LENGTH'] = 50                                                                                                                 # max length of comment
