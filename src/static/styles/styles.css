@@ -17,6 +17,10 @@ header.page-header {
   text-align: center;
 }
 
+header p.header-user-text {
+  margin-top: 0px;
+}
+
 ul.navigation {
   list-style-type: none;
   display: flex;

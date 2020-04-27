@@ -1,4 +1,4 @@
 <div class="comment-block">
-  <p class="com-author"><a href="users/{{ comment.userid }}">{{ comment.username }}</a></p>
+  <p class="com-author"><a href="{{ url_for('generate_user_page', user_id=comment.userid) }}">{{ comment.username }}</a></p>
   <p class="com-com">{{ comment.message }}</p>
 </div>

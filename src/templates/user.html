@@ -18,7 +18,11 @@
           <li><a href="{{ url_for('handle_image_upload') }}">Upload Image</a></li>
         </ul>
       </nav>
+      {% if cur_user %}
+      <p class="header-user-text">Welcome <a href="{{ url_for('generate_user_page', user_id=cur_user.id) }}">{{ cur_user.name }}</a>! | <a href="{{ url_for('process_logout') }}">Logout</a></p>
+      {% else %}
       <a href="{{ url_for('display_login_register_page') }}">Login / Register</a>
+      {% endif %}
     </header>
     <main class="main-content-2-col">
       <div class="section-dummy"></div>
@@ -36,7 +40,7 @@
             <div class="image-container" id="user-{{ image.userid }}-img-{{ image.id }}">
               <div class="img-header">
                 <h3 class="img-title">{{ image.title }}</h3>
-                <h3 class="img-author">By: <a href="users/{{ image.userid }}">{{ image.username }}</a></h3>
+                <h3 class="img-author">By: <a href="{{ url_for('generate_user_page', user_id=image.userid) }}">{{ image.username }}</a></h3>
               </div>
               <div class="img-img">
                 <img src="{{ image.path }}" alt="User-submitted image" />
@@ -55,7 +59,7 @@
                   <div id="com-block-{{ image.id }}">
                     {% for comment in image.comments %}
                       <div class="comment-block">
-                        <p class="com-author"><a href="users/{{ comment.userid }}">{{ comment.username }}</a></p>
+                        <p class="com-author"><a href="{{ url_for('generate_user_page', user_id=comment.userid) }}">{{ comment.username }}</a></p>
                         <p class="com-com">{{ comment.message }}</p>
                       </div>
                     {% else %}

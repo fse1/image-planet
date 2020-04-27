@@ -22,7 +22,10 @@
         <div class="section-dummy"></div>
         <div class="section-main">
           <h2>Login</h2>
-          <form action="/login" method="post">
+          {% for error_str in errors_log %}
+          <p class="error-text">{{ error_str }}</p>
+          {% endfor %}
+          <form action="{{ url_for('process_login') }}" method="post">
               <label for="username">Username:</label>
               <input type="text" id="username" name="username">
               <br>
@@ -35,7 +38,26 @@
           </form>
           <hr />
           <h2>Register</h2>
-          <form action="/register" method="post">
+          <h3>Guidelines</h3>
+          <ul>
+            <li>Username:</li>
+            <ul>
+              <li>Must be between 3 and 15 characters.</li>
+              <li>Can contain only ASCII printable characters.</li>
+              <li>Cannot have any leading or trailing whitespace.</li>
+            </ul>
+            <li>Password:</li>
+            <ul>
+              <li>Must be between 8 and 100 characters.</li>
+              <li>Must contain at least one lowercase letter, one uppercase letter, one digit, and one special character.</li>
+              <li>Can contain only ASCII printable characters.</li>
+              <li>Cannot have any leading or trailing whitespace.</li>
+            </ul>
+          </ul>
+          {% for error_str in errors_reg %}
+          <p class="error-text">{{ error_str }}</p>
+          {% endfor %}
+          <form action="{{ url_for('process_registration') }}" method="post">
               <label for="username">Username:</label>
               <input type="text" id="username" name="username">
               <br>

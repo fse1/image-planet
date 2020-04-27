@@ -2,10 +2,12 @@
 
 import sys
 import os
-from flask import Flask, url_for, redirect, g, render_template, request, safe_join, send_from_directory, escape, json
+from flask import Flask, url_for, redirect, g, render_template, request, safe_join, send_from_directory, make_response
 from flask_socketio import SocketIO, join_room
 import mysql.connector
 import hashlib
+import secrets
+import datetime
 
 # try and get the database password and username from env variable
 if not ('DB_USER' in os.environ):
@@ -15,10 +17,15 @@ if not ('DB_PASS' in os.environ):
 
 # create and configure the Flask application
 app = Flask(__name__)
-app.config.update(DB_USER=(os.environ['DB_USER']), DB_HOST='127.0.0.1', DB_PASS=(os.environ['DB_PASS']), DB_NAME='imageplanet', DB_PARAM='db')          # database information
+app.config.update(DB_USER=(os.environ['DB_USER']), DB_HOST='127.0.0.1', DB_PASS=(os.environ['DB_PASS']), DB_NAME='imageplanet', DB_PARAM='db')        # database information
 app.config['UPLOAD_DIRECTORY'] = 'user-images'                                                                                                        # upload image directory
 app.config['MAX_CONTENT_LENGTH'] = 15 * 1024 * 1024                                                                                                   # max file size (15 MB)
 app.config['MAX_COMMENT_LENGTH'] = 50                                                                                                                 # max length of comment
+app.config.update(SC_N=16384, SC_R=8, SC_P=1)                                                                                                         # scrypt parameters
+app.config.update(USERNAME_MIN=3, USERNAME_MAX=15, PASSWORD_MIN=8, PASSWORD_MAX=100)                                                                  # username and password length requirements
+app.config.update(PASS_SALT_SIZE=16, SESSION_TOKEN_SIZE=32, CSRF_TOKEN_SIZE=32, TOKEN_SALT=b'token', TOKEN_EXPIRATION=datetime.timedelta(days=7))     # security info
+app.config.update(SESSION_COOKIE_NAME='session-token', USER_PARAM='current_user')                                                                     # security info continued
+app.config.update(DEFAULT_PROFILE_PIC='default.jpg', DEFAULT_PROFILE_DESCRIPTION='No profile description.')                                           # default database fields
 new_app = SocketIO(app, cors_allowed_origins='*')
 
 
@@ -50,6 +57,55 @@ class UserInfo():
     self.id = 0
     self.name = ''
     self.profile_text = ''
+    self.profile_pic = ''
+    self.salt = b''
+    self.passhash = b''
+    self.session_hash = b''
+    self.session_expiration = datetime.date.today()
+    self.csrf_token = ''
+
+
+# check the session token
+def check_session_token(db, cursor):
+  
+  # try to get token from cookies
+  token = request.cookies.get(app.config['SESSION_COOKIE_NAME'])
+  
+  if not token:
+    g.setdefault(app.config['USER_PARAM'], default=None)
+    return
+  
+  try:
+    token_hash = hashlib.scrypt(b''.fromhex(token), salt=app.config['TOKEN_SALT'], n=app.config['SC_N'], r=app.config['SC_R'], p=app.config['SC_P'])
+  except Exception:
+    g.setdefault(app.config['USER_PARAM'], default=None)
+    return
+  
+  cursor.execute('SELECT userid, username, sessionexpiration, csrftoken FROM users WHERE sessioncookiehash=%s', (token_hash.hex(),))
+  data = cursor.fetchall()
+  
+  if not (len(data) == 1):
+    g.setdefault(app.config['USER_PARAM'], default=None)
+    return
+  
+  # get information about user
+  user = UserInfo()
+  
+  for (userid, username, sessionexpiration, csrftoken) in data:
+    user.id = userid
+    user.name = username
+    user.session_expiration = sessionexpiration
+    user.csrf_token = csrftoken
+    
+  # make sure the token has not expired, update db if so
+  if user.session_expiration <= datetime.date.today():
+    cursor.execute('UPDATE users SET sessioncookiehash=NULL, csrftoken=NULL WHERE userid=%s', (user.id,))
+    db.commit()
+    g.setdefault(app.config['USER_PARAM'], default=None)
+    return
+    
+  # now set the actual user
+  g.setdefault(app.config['USER_PARAM'], default=user)
 
 
 # handle home page
@@ -62,18 +118,22 @@ def generate_home_page():
   db = g.get(app.config['DB_PARAM'])
   db_cursor = db.cursor()
   
+  # try to authenticate the user
+  check_session_token(db, db_cursor)
+  current_user = g.get(app.config['USER_PARAM'])
+  
   follow = []
   recent = []
   
-  db_cursor.execute('SELECT imageid, imgtitle, userid, imgfile, imgdesc, likes FROM images ORDER BY imageid DESC LIMIT 3')
+  db_cursor.execute('SELECT images.imageid, images.imgtitle, images.userid, images.imgfile, images.imgdesc, images.likes, users.username FROM images JOIN users ON images.userid=users.userid ORDER BY images.imageid DESC LIMIT 3')
   
   # get data on the lastest three images
-  for (imageid, imgtitle, userid, imgfile, imgdesc, likes) in db_cursor:
+  for (imageid, imgtitle, userid, imgfile, imgdesc, likes, username) in db_cursor:
     image = ImageInfo()
     image.id = imageid
     image.userid = userid
     image.title = imgtitle
-    image.username = 'Anonymous User'
+    image.username = username
     image.path = url_for('send_user_image', img_name=imgfile)
     image.likes = likes
     image.description = imgdesc
@@ -81,15 +141,15 @@ def generate_home_page():
   
   # now get the comments for each recent image
   for image in recent:
-    db_cursor.execute('SELECT userid, comtext FROM comments WHERE imageid=%s', (image.id,))
-    for (userid, comtext) in db_cursor:
+    db_cursor.execute('SELECT comments.userid, comments.comtext, users.username FROM comments JOIN users ON comments.userid=users.userid WHERE comments.imageid=%s', (image.id,))
+    for (userid, comtext, username) in db_cursor:
       com = MessageInfo()
       com.userid = userid
-      com.username = 'Anonymous User'
+      com.username = username
       com.message = comtext
       image.comments.append(com)
   
-  return render_template('index.html', follower_images=follow, recent_images=recent)
+  return render_template('index.html', follower_images=follow, recent_images=recent, cur_user=current_user)
   
 @app.route('/submit-comment', methods=['POST'])
 def process_comment():
@@ -99,6 +159,14 @@ def process_comment():
     g.setdefault(app.config['DB_PARAM'], default=get_database(app.config['DB_NAME']))
   db = g.get(app.config['DB_PARAM'])
   db_cursor = db.cursor()
+  
+  # try to authenticate the user
+  check_session_token(db, db_cursor)
+  current_user = g.get(app.config['USER_PARAM'])
+  
+  # if not authenticated reject
+  if not current_user:
+    return 'Not Authenticated!', 403
   
   imageid = request.form['imgid']
   comtext = request.form['comment'].strip()
@@ -112,14 +180,14 @@ def process_comment():
     return 'Image does not exist!', 400
   
   # now add the comment to the database
-  db_cursor.execute('INSERT INTO comments (imageid, userid, comtext) VALUES (%s, 0, %s)', (imageid, comtext))
+  db_cursor.execute('INSERT INTO comments (imageid, userid, comtext) VALUES (%s, %s, %s)', (imageid, current_user.id, comtext))
   db.commit()
   
   # now send the new comment to all connected clients
   send_data = {}
   com_info = MessageInfo()
-  com_info.userid = 0
-  com_info.username = 'Anonymous User'
+  com_info.userid = current_user.id
+  com_info.username = current_user.name
   com_info.message = comtext
   send_data['imageid'] = imageid
   send_data['html'] = render_template('one-comment.html', comment=com_info)
@@ -135,6 +203,14 @@ def process_like():
     g.setdefault(app.config['DB_PARAM'], default=get_database(app.config['DB_NAME']))
   db = g.get(app.config['DB_PARAM'])
   db_cursor = db.cursor()
+  
+  # try to authenticate the user
+  check_session_token(db, db_cursor)
+  current_user = g.get(app.config['USER_PARAM'])
+  
+  # if not authenticated reject
+  if not current_user:
+    return 'Not Authenticated!', 403
   
   imageid = request.form['imgid']
 
@@ -164,6 +240,10 @@ def generate_image_gallery():
   db = g.get(app.config['DB_PARAM'])
   db_cursor = db.cursor()
   
+  # try to authenticate the user
+  check_session_token(db, db_cursor)
+  current_user = g.get(app.config['USER_PARAM'])
+  
   display_images = []
   
   db_cursor.execute('SELECT userid, imgfile FROM images')
@@ -175,25 +255,11 @@ def generate_image_gallery():
     image.path = url_for('send_user_image', img_name=imgfile)
     display_images.append(image)
   
-  return render_template('images.html', images=display_images)
+  return render_template('images.html', images=display_images, cur_user=current_user)
   
 # handle sending user list
 @app.route('/users')
 def generate_user_list():
-  
-  user_list = []
-  
-  user = UserInfo()
-  user.id = 0
-  user.name = 'Anonymous User'
-  user_list.append(user)
-  
-  return render_template('userlist.html', users=user_list)
-  
-  
-# handle sending user profile page
-@app.route('/users/0')
-def generate_user_page():
   
   # get the database if it does not exist
   if not (app.config['DB_PARAM'] in g):
@@ -201,14 +267,53 @@ def generate_user_page():
   db = g.get(app.config['DB_PARAM'])
   db_cursor = db.cursor()
   
+  # try to authenticate the user
+  check_session_token(db, db_cursor)
+  current_user = g.get(app.config['USER_PARAM'])
+  
+  user_list = []
+  
+  db_cursor.execute('SELECT userid, username FROM users')
+  
+  for (userid, username) in db_cursor:
+    user = UserInfo()
+    user.id = userid
+    user.name = username
+    user_list.append(user)
+  
+  return render_template('userlist.html', users=user_list, cur_user=current_user)
+  
+  
+# handle sending user profile page
+@app.route('/users/<int:user_id>')
+def generate_user_page(user_id):
+  
+  # get the database if it does not exist
+  if not (app.config['DB_PARAM'] in g):
+    g.setdefault(app.config['DB_PARAM'], default=get_database(app.config['DB_NAME']))
+  db = g.get(app.config['DB_PARAM'])
+  db_cursor = db.cursor()
+  
+  # try to authenticate the user
+  check_session_token(db, db_cursor)
+  current_user = g.get(app.config['USER_PARAM'])
+  
+  # get information about the requested user
+  db_cursor.execute('SELECT username, profilepic, profiledesc FROM users WHERE userid=%s', (user_id,))
+  data = db_cursor.fetchall()
+  if not (len(data) == 1):
+    return 'Not Found!', 404
+  
   user = UserInfo()
-  user.id = 0
-  user.name = 'Anonymous User'
-  user.profile_text = 'No profile description.'
+  for (username, profilepic, profiledesc) in data:
+    user.id = user_id
+    user.name = username
+    user.profile_text = profiledesc
+    user.profile_pic = profilepic
   
   image_list = []
   
-  db_cursor.execute('SELECT imageid, imgtitle, imgfile, imgdesc, likes FROM images')
+  db_cursor.execute('SELECT imageid, imgtitle, imgfile, imgdesc, likes FROM images WHERE userid=%s', (user.id,))
   
   # get data on all images
   for (imageid, imgtitle, imgfile, imgdesc, likes) in db_cursor:
@@ -224,20 +329,219 @@ def generate_user_page():
   
   # now get the comments for each recent image
   for image in image_list:
-    db_cursor.execute('SELECT userid, comtext FROM comments WHERE imageid=%s', (image.id,))
-    for (userid, comtext) in db_cursor:
+    db_cursor.execute('SELECT comments.userid, comments.comtext, users.username FROM comments JOIN users ON comments.userid=users.userid WHERE comments.imageid=%s', (image.id,))
+    for (userid, comtext, username) in db_cursor:
       com = MessageInfo()
       com.userid = userid
-      com.username = 'Anonymous User'
+      com.username = username
       com.message = comtext
       image.comments.append(com)
   
-  return render_template('user.html', user=user, images=image_list)
+  return render_template('user.html', user=user, images=image_list, cur_user=current_user)
   
 # handle display of the login/registration form
 @app.route('/login-or-register')
 def display_login_register_page():
+
+  # get the database if it does not exist
+  if not (app.config['DB_PARAM'] in g):
+    g.setdefault(app.config['DB_PARAM'], default=get_database(app.config['DB_NAME']))
+  db = g.get(app.config['DB_PARAM'])
+  db_cursor = db.cursor()
+  
+  # try to authenticate the user
+  check_session_token(db, db_cursor)
+  current_user = g.get(app.config['USER_PARAM'])
+  
+  # redirect to user page if already logged in
+  if current_user:
+    return redirect(url_for('generate_user_page', user_id=current_user.id))
+  
   return render_template('login.html')
+  
+# handle user registration
+@app.route('/register', methods=['POST'])
+def process_registration():
+  
+  # get the database if it does not exist
+  if not (app.config['DB_PARAM'] in g):
+    g.setdefault(app.config['DB_PARAM'], default=get_database(app.config['DB_NAME']))
+  db = g.get(app.config['DB_PARAM'])
+  db_cursor = db.cursor()
+  
+  # store any errors
+  errors = []
+  
+  # get form parameters
+  username = request.form['username']
+  password = request.form['password']
+  password2 = request.form['password2']
+  
+  # check form parameters: ascii printable, no leading/trailing whitespace, length requirements
+  if not (username.isascii()):
+    errors.append('Error: Username contains non-ASCII characters.')
+    
+  if not (password.isascii()):
+    errors.append('Error: Password contains non-ASCII characters.')
+    
+  if not (username.isprintable()):
+    errors.append('Error: Username contains unprintable characters.')
+    
+  if not (password.isprintable()):
+    errors.append('Error: Password contains unprintable characters.')
+  
+  if not (username == username.strip()):
+    errors.append('Error: Username contains leading and/or trailing whitespace.')
+    
+  if not (password == password.strip()):
+    errors.append('Error: Password contains leading and/or trailing whitespace.')
+    
+  if len(username) < app.config['USERNAME_MIN']:
+    errors.append('Error: Username is less than {} characters.'.format(app.config['USERNAME_MIN']))
+  
+  if len(username) > app.config['USERNAME_MAX']:
+    errors.append('Error: Username is greater than {} characters.'.format(app.config['USERNAME_MAX']))
+    
+  if len(password) < app.config['PASSWORD_MIN']:
+    errors.append('Error: Password is less than {} characters.'.format(app.config['PASSWORD_MIN']))
+  
+  if len(password) > app.config['PASSWORD_MAX']:
+    errors.append('Error: Password is greater than {} characters.'.format(app.config['PASSWORD_MAX']))
+    
+  # make sure the two entered passwords match
+  if not (password == password2):
+    errors.append('Error: Passwords do not match.')
+    
+  # check password strength
+  lower = False
+  upper = False
+  digit = False
+  special = False
+  for char in password:
+    if char.isupper():
+      upper = True
+    elif char.islower():
+      lower = True
+    elif char.isdecimal():
+      digit = True
+    elif char in ' !"#$%&\'()*+,-./:;<=>?@[]\\^_`~{}|':
+      special = True
+      
+  if not (lower and upper and digit and special):
+    errors.append('Error: Password must contain at least one lowercase letter, one uppercase letter, one digit, and one special character.')
+    
+  # now return on error
+  if errors:
+    return render_template('login.html', errors_reg=errors)
+    
+  # make sure the username does not already exist
+  db_cursor.execute('SELECT userid FROM users WHERE username=%s', (username,))
+  if len(db_cursor.fetchall()) > 0:
+    errors.append('Error: Username already taken. Please select another one.')
+    return render_template('login.html', errors_reg=errors)
+    
+  # now start generating user information
+  salt = secrets.token_bytes(app.config['PASS_SALT_SIZE'])
+  session_token = secrets.token_bytes(app.config['SESSION_TOKEN_SIZE'])
+  csrf_token = secrets.token_bytes(app.config['CSRF_TOKEN_SIZE'])
+  
+  # now generate hashes of password and session token
+  pass_hash = hashlib.scrypt(password.encode('utf-8'), salt=salt, n=app.config['SC_N'], r=app.config['SC_R'], p=app.config['SC_P'])
+  session_hash = hashlib.scrypt(session_token, salt=app.config['TOKEN_SALT'], n=app.config['SC_N'], r=app.config['SC_R'], p=app.config['SC_P'])
+  
+  # generate expiration of token
+  expiration = datetime.date.today() + app.config['TOKEN_EXPIRATION']
+  
+  # now insert the data into the database
+  db_cursor.execute('INSERT INTO users (username, profilepic, profiledesc, salt, passhash, sessioncookiehash, sessionexpiration, csrftoken) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)', (username, app.config['DEFAULT_PROFILE_PIC'], app.config['DEFAULT_PROFILE_DESCRIPTION'], salt.hex(), pass_hash.hex(), session_hash.hex(), expiration, csrf_token.hex()))
+  db.commit()
+  
+  response = make_response(redirect(url_for('generate_user_page', user_id=db_cursor.lastrowid)))
+  response.set_cookie(app.config['SESSION_COOKIE_NAME'], value=session_token.hex(), expires=(datetime.datetime.today() + app.config['TOKEN_EXPIRATION']))
+  return response
+
+# handle user login
+@app.route('/login', methods=['POST'])
+def process_login():
+  
+  # get the database if it does not exist
+  if not (app.config['DB_PARAM'] in g):
+    g.setdefault(app.config['DB_PARAM'], default=get_database(app.config['DB_NAME']))
+  db = g.get(app.config['DB_PARAM'])
+  db_cursor = db.cursor()
+  
+  # store any errors
+  errors = []
+  
+  # get form parameters
+  username = request.form['username']
+  password = request.form['password']
+  
+  # get the user id, password hash, and salt for the specified username
+  db_cursor.execute('SELECT userid, salt, passhash FROM users WHERE username=%s', (username,))
+  data = db_cursor.fetchall()
+  
+  # make sure the user exists
+  if not (len(data) == 1):
+    errors.append('Error: Incorrect Username and/or Password.')
+    return render_template('login.html', errors_log=errors)
+  
+  # get the data
+  user = UserInfo()
+  
+  for (userid, salt, passhash) in data:
+    user.id = userid
+    user.salt = b''.fromhex(salt)
+    user.passhash = b''.fromhex(passhash)
+    
+  # calculate the entered password hash
+  entered_pass_hash = hashlib.scrypt(password.encode('utf-8'), salt=user.salt, n=app.config['SC_N'], r=app.config['SC_R'], p=app.config['SC_P'])
+  
+  # finally, compare the hashes
+  if not (secrets.compare_digest(entered_pass_hash, user.passhash)):
+    errors.append('Error: Incorrect Username and/or Password.')
+    return render_template('login.html', errors_log=errors)
+       
+  # now start generating new tokens
+  session_token = secrets.token_bytes(app.config['SESSION_TOKEN_SIZE'])
+  csrf_token = secrets.token_bytes(app.config['CSRF_TOKEN_SIZE'])
+  
+  # now generate hash of session token
+  session_hash = hashlib.scrypt(session_token, salt=app.config['TOKEN_SALT'], n=app.config['SC_N'], r=app.config['SC_R'], p=app.config['SC_P'])
+  
+  # generate expiration of token
+  expiration = datetime.date.today() + app.config['TOKEN_EXPIRATION']
+  
+  # now update session info for the user in the database
+  db_cursor.execute('UPDATE users SET sessioncookiehash=%s, sessionexpiration=%s, csrftoken=%s WHERE userid=%s', (session_hash.hex(), expiration, csrf_token.hex(), user.id))
+  db.commit()
+  
+  response = make_response(redirect(url_for('generate_user_page', user_id=user.id)))
+  response.set_cookie(app.config['SESSION_COOKIE_NAME'], value=session_token.hex(), expires=(datetime.datetime.today() + app.config['TOKEN_EXPIRATION']))
+  return response
+  
+# handle user logout
+@app.route('/logout')
+def process_logout():
+  
+  # get the database if it does not exist
+  if not (app.config['DB_PARAM'] in g):
+    g.setdefault(app.config['DB_PARAM'], default=get_database(app.config['DB_NAME']))
+  db = g.get(app.config['DB_PARAM'])
+  db_cursor = db.cursor()
+  
+  # try to authenticate the user
+  check_session_token(db, db_cursor)
+  current_user = g.get(app.config['USER_PARAM'])
+  
+  # if not logged in, redirect to home page
+  if not current_user:
+    return redirect(url_for('generate_home_page'))
+    
+  # if logged in, clear tokens in database and redirect to homepage
+  db_cursor.execute('UPDATE users SET sessioncookiehash=NULL, csrftoken=NULL WHERE userid=%s', (current_user.id,))
+  db.commit()
+  return redirect(url_for('generate_home_page'))
   
 # handle display of direct messaging
 @app.route('/direct-msg')
@@ -255,9 +559,16 @@ def handle_image_upload():
   db = g.get(app.config['DB_PARAM'])
   db_cursor = db.cursor()
   
+  # try to authenticate the user
+  check_session_token(db, db_cursor)
+  current_user = g.get(app.config['USER_PARAM'])
+  
+  if not current_user:
+    return redirect(url_for('display_login_register_page'))
+  
   # check for actual upload versus form view
   if request.method == 'GET':
-    return render_template('upload-image.html', error_str='', success_str='')
+    return render_template('upload-image.html', error_str='', success_str='', cur_user=current_user)
   else:
     
     # grab data from form
@@ -271,7 +582,7 @@ def handle_image_upload():
     # get the image
     image = request.files['img']
     if image.filename == '':
-      return render_template('upload-image.html', error_str='Error: No image file selected for upload. Please select an image to upload and try again.', success_str='')
+      return render_template('upload-image.html', error_str='Error: No image file selected for upload. Please select an image to upload and try again.', success_str='', cur_user=current_user)
     
     # check if the image is an allowed format
     file_extension = ''
@@ -284,7 +595,7 @@ def handle_image_upload():
     elif image.mimetype == 'image/png':
       file_extension = '.png'
     else:
-      return render_template('upload-image.html', error_str='Error: Unsupported image format. Only BMP, GIF, JPEG, and PNG file formats are supported.', success_str='')
+      return render_template('upload-image.html', error_str='Error: Unsupported image format. Only BMP, GIF, JPEG, and PNG file formats are supported.', success_str='', cur_user=current_user)
       
     # now read the file and generate a hash of it for the filename
     img_hash = hashlib.sha384()
@@ -296,16 +607,16 @@ def handle_image_upload():
     image.save(safe_join(app.config['UPLOAD_DIRECTORY'], img_filename))
     
     # finally save the details to the database
-    db_cursor.execute('INSERT INTO images (userid, imgtitle, imgfile, imgdesc, likes) VALUES (0, %s, %s, %s, 0)', (title, img_filename, description))
+    db_cursor.execute('INSERT INTO images (userid, imgtitle, imgfile, imgdesc, likes) VALUES (%s, %s, %s, %s, 0)', (current_user.id, title, img_filename, description))
     db.commit()
     
     # generate data to send over websocket connection
     send_data = {}
     image_data = ImageInfo()
     image_data.id = db_cursor.lastrowid
-    image_data.userid = 0
+    image_data.userid = current_user.id
     image_data.title = title
-    image_data.username = 'Anonymous User'
+    image_data.username = current_user.name
     image_data.path = url_for('send_user_image', img_name=img_filename)
     image_data.likes = 0
     image_data.description = description
@@ -316,7 +627,7 @@ def handle_image_upload():
     new_app.emit('new-image-full', send_data, room='general-notifications')
     
     
-    return render_template('upload-image.html', error_str='', success_str=(url_for('send_user_image', img_name=img_filename)))
+    return render_template('upload-image.html', error_str='', success_str=(url_for('send_user_image', img_name=img_filename)), cur_user=current_user)
 
 
 # send user images

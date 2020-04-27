@@ -1,7 +1,7 @@
 <div class="image-container" id="user-{{ image.userid }}-img-{{ image.id }}">
   <div class="img-header">
     <h3 class="img-title">{{ image.title }}</h3>
-    <h3 class="img-author">By: <a href="users/{{ image.userid }}">{{ image.username }}</a></h3>
+    <h3 class="img-author">By: <a href="{{ url_for('generate_user_page', user_id=image.userid) }}">{{ image.username }}</a></h3>
   </div>
   <div class="img-img">
     <img src="{{ image.path }}" alt="User-submitted image" />
