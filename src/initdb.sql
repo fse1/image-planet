@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS images (imageid BIGINT PRIMARY KEY AUTO_INCREMENT NOT
                                      userid BIGINT NOT NULL,
                                      imgfile TEXT NOT NULL,
                                      imgdesc TEXT,
+                                     likers TEXT NOT NULL,
                                      likes BIGINT NOT NULL);
 CREATE TABLE IF NOT EXISTS comments (imageid BIGINT NOT NULL,
                                        userid BIGINT NOT NULL,
