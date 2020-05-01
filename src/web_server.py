@@ -1,3 +1,5 @@
+# Python 3.7
+
 # Made using https://flask.palletsprojects.com/ as a reference
 
 import sys
@@ -220,21 +222,23 @@ def process_like():
     return 'Image does not exist!', 400
   
   # get list of ids that liked post
-  db_cursor.execute('SELECT likers FROM images WHERE imageid=%s AND likesthisimageid=%s', (current_user, imageid))
+  db_cursor.execute('SELECT userid FROM likes WHERE userid=%s AND likesthisimageid=%s', (current_user.id, imageid))
   post_like = db_cursor.fetchall()
   # check if current user is in that list
   # if they are:
   if len(post_like) == 1:
     # decrement like count
     db_cursor.execute('UPDATE images SET likes=likes-1 WHERE imageid=%s', (imageid,))
+    db.commit()
     # remove current user from list of users that liked post
-    db_cursor.execute('DELETE FROM likes WHERE userid=%s AND likesthisimageid=%s', (current_user, imageid))
+    db_cursor.execute('DELETE FROM likes WHERE userid=%s AND likesthisimageid=%s', (current_user.id, imageid))
   # if they are not:
   else:
     # increment like count
     db_cursor.execute('UPDATE images SET likes=likes+1 WHERE imageid=%s', (imageid,))
+    db.commit()
     # add current user to list of users that liked post
-    db_cursor.execute('INSERT INTO likes (userid, likesthisimageid) VALUES (%s, %s)', (current_user, imageid))
+    db_cursor.execute('INSERT INTO likes (userid, likesthisimageid) VALUES (%s, %s)', (current_user.id, imageid))
 
   # now increment the like count
   #db_cursor.execute('UPDATE images SET likes=likes+1 WHERE imageid=%s', (imageid,))
