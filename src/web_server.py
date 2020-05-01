@@ -39,7 +39,6 @@ class ImageInfo():
     self.username = ''
     self.path = ''
     self.likes = 0
-    self.likers = ''
     self.description = ''
     self.comments = []
    
@@ -217,30 +216,25 @@ def process_like():
 
   # make sure the image exists
   db_cursor.execute('SELECT userid FROM images WHERE imageid=%s', (imageid,))
-  user_id = db_cursor.fetchall()
-  if (len(user_id)) != 1:
+  if (len(db_cursor.fetchall())) != 1:
     return 'Image does not exist!', 400
-
+  
   # get list of ids that liked post
-  db_cursor.execute('SELECT likers FROM images WHERE imageid=%s', (imageid,))
-  likers_str = db_cursor.fetchall()
-  likers = likers_str.split(',')
+  db_cursor.execute('SELECT likers FROM images WHERE imageid=%s AND likesthisimageid=%s', (current_user, imageid))
+  post_like = db_cursor.fetchall()
   # check if current user is in that list
   # if they are:
-  if user_id in likers:
+  if len(post_like) == 1:
     # decrement like count
     db_cursor.execute('UPDATE images SET likes=likes-1 WHERE imageid=%s', (imageid,))
     # remove current user from list of users that liked post
-    likers = likers.remove(user_id)
-    likers_str = ','.join(likers)
-    db_cursor.execute('UPDATE images SET likers=%s WHERE imageid=%s', (likers_str, imageid,))
+    db_cursor.execute('DELETE FROM likes WHERE userid=%s AND likesthisimageid=%s', (current_user, imageid))
   # if they are not:
   else:
     # increment like count
     db_cursor.execute('UPDATE images SET likes=likes+1 WHERE imageid=%s', (imageid,))
     # add current user to list of users that liked post
-    likers_str += ',' + str(user_id)
-    db_cursor.execute('UPDATE images SET likers=%s WHERE imageid=%s', (likers_str, imageid,))
+    db_cursor.execute('INSERT INTO likes (userid, likesthisimageid) VALUES (%s, %s)', (current_user, imageid))
 
   # now increment the like count
   #db_cursor.execute('UPDATE images SET likes=likes+1 WHERE imageid=%s', (imageid,))
@@ -630,7 +624,7 @@ def handle_image_upload():
     image.save(safe_join(app.config['UPLOAD_DIRECTORY'], img_filename))
     
     # finally save the details to the database
-    db_cursor.execute('INSERT INTO images (userid, imgtitle, imgfile, imgdesc, likers, likes) VALUES (%s, %s, %s, %s, %s, 0)', (current_user.id, title, img_filename, description, ''))
+    db_cursor.execute('INSERT INTO images (userid, imgtitle, imgfile, imgdesc, likes) VALUES (%s, %s, %s, %s, 0)', (current_user.id, title, img_filename, description))
     db.commit()
     
     # generate data to send over websocket connection
@@ -641,7 +635,6 @@ def handle_image_upload():
     image_data.title = title
     image_data.username = current_user.name
     image_data.path = url_for('send_user_image', img_name=img_filename)
-    image_data.likers = ''
     image_data.likes = 0
     image_data.description = description
     send_data['userid'] = image_data.userid
