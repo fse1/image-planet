@@ -15,11 +15,14 @@
           <li><a href="{{ url_for('handle_image_upload') }}">Upload Image</a></li>
         </ul>
       </nav>
-      {% if cur_user %}
-      <p class="header-user-text">Welcome <a href="{{ url_for('generate_user_page', user_id=cur_user.id) }}">{{ cur_user.name }}</a>! | <a href="{{ url_for('process_logout') }}">Logout</a></p>
-      {% else %}
-      <a href="{{ url_for('display_login_register_page') }}">Login / Register</a>
-      {% endif %}
+      <div class="header-user-info">
+        <p class="header-user-greeting">Welcome <a href="{{ url_for('generate_user_page', user_id=cur_user.id) }}">{{ cur_user.name }}</a>! | <a href="{{ url_for('process_logout') }}">Logout</a></p>
+        {% if cur_user.unread_messages %}
+        <p class="header-user-new-messages"><a href="{{ url_for('generate_direct_message_listing') }}">View New Messages</a></p>
+        {% else %}
+        <p class="header-user-messages"><a href="{{ url_for('generate_direct_message_listing') }}">View Messages</a></p>
+        {% endif %}
+      </div>
     </header>
       <main class="main-content-1-col">
         <div class="section-dummy"></div>

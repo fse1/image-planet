@@ -19,7 +19,14 @@
         </ul>
       </nav>
       {% if cur_user %}
-      <p class="header-user-text">Welcome <a href="{{ url_for('generate_user_page', user_id=cur_user.id) }}">{{ cur_user.name }}</a>! | <a href="{{ url_for('process_logout') }}">Logout</a></p>
+      <div class="header-user-info">
+        <p class="header-user-greeting">Welcome <a href="{{ url_for('generate_user_page', user_id=cur_user.id) }}">{{ cur_user.name }}</a>! | <a href="{{ url_for('process_logout') }}">Logout</a></p>
+        {% if cur_user.unread_messages %}
+        <p class="header-user-new-messages"><a href="{{ url_for('generate_direct_message_listing') }}">View New Messages</a></p>
+        {% else %}
+        <p class="header-user-messages"><a href="{{ url_for('generate_direct_message_listing') }}">View Messages</a></p>
+        {% endif %}
+      </div>
       {% else %}
       <a href="{{ url_for('display_login_register_page') }}">Login / Register</a>
       {% endif %}
@@ -85,9 +92,15 @@
       </div>
       <div class="section-main">
         <div class="option-menu">
+        {% if cur_user %}
           <h2>Actions</h2>
-          <button class="option-button">Follow</button><br />
-          <a href="{{ url_for('generate_direct_message_page') }}"><button class="option-button">Direct Message</button></a>
+          {% if cur_user.id == user.id %}
+            <a href="{{ url_for('generate_direct_message_listing') }}"><button class="option-button">View Direct Message Listing</button></a>
+          {% else %}
+            <button class="option-button">Follow</button><br />
+            <a href="{{ url_for('generate_direct_message_page', user_id=user.id) }}"><button class="option-button">Direct Message</button></a>
+          {% endif %}
+        {% endif %}
         </div>
       </div>
       <div class="section-dummy"></div>

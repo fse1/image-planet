@@ -8,9 +8,6 @@ document.addEventListener('DOMContentLoaded', function () {
     // create socket
     let socket = io();
 
-    // join general notification room
-    socket.emit('join-general-room');
-
     // handle new images. append to bottom of uploaded images
     socket.on('new-image-full', function (data) { 
    
