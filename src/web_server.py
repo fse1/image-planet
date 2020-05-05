@@ -122,6 +122,9 @@ def check_session_token(db, cursor):
 # check for unread messages
 def check_unread_messages(cursor, current_user):
   
+  if not current_user:
+    return
+    
   # check for both low and high user ids
   cursor.execute('SELECT dmid FROM directmsg WHERE lowuserid=%s AND lowuserread=0 LIMIT 1', (current_user.id,))
   data = cursor.fetchall()
