@@ -20,7 +20,8 @@ app = Flask(__name__)
 app.config.update(DB_USER=(os.environ['DB_USER']), DB_HOST='127.0.0.1', DB_PASS=(os.environ['DB_PASS']), DB_NAME='imageplanet', DB_PARAM='db')        # database information
 app.config['UPLOAD_DIRECTORY'] = 'user-images'                                                                                                        # upload image directory
 app.config['MAX_CONTENT_LENGTH'] = 15 * 1024 * 1024                                                                                                   # max file size (15 MB)
-app.config['MAX_COMMENT_LENGTH'] = 50                                                                                                                 # max length of comment
+app.config['MAX_COMMENT_LENGTH'] = 50                                                              
+                                                   # max length of comment
 app.config.update(SC_N=16384, SC_R=8, SC_P=1)                                                                                                         # scrypt parameters
 app.config.update(USERNAME_MIN=3, USERNAME_MAX=15, PASSWORD_MIN=8, PASSWORD_MAX=100)                                                                  # username and password length requirements
 app.config.update(PASS_SALT_SIZE=16, SESSION_TOKEN_SIZE=32, CSRF_TOKEN_SIZE=32, TOKEN_SALT=b'token', TOKEN_EXPIRATION=datetime.timedelta(days=7))     # security info
@@ -121,6 +122,9 @@ def check_session_token(db, cursor):
 
 # check for unread messages
 def check_unread_messages(cursor, current_user):
+  
+  if not current_user:
+    return
   
   # check for both low and high user ids
   cursor.execute('SELECT dmid FROM directmsg WHERE lowuserid=%s AND lowuserread=0 LIMIT 1', (current_user.id,))
@@ -585,6 +589,35 @@ def process_logout():
   db_cursor.execute('UPDATE users SET sessioncookiehash=NULL, csrftoken=NULL WHERE userid=%s', (current_user.id,))
   db.commit()
   return redirect(url_for('generate_home_page'))
+
+# handle following of new user
+@app.route('/follow', methods=['POST'])
+def create_new_follower():
+  # get the database if it does not exist
+  if not (app.config['DB_PARAM'] in g):
+    g.setdefault(app.config['DB_PARAM'], default=get_database(app.config['DB_NAME']))
+  db = g.get(app.config['DB_PARAM'])
+  db_cursor = db.cursor()
+  
+  # try to authenticate the user
+  check_session_token(db, db_cursor)
+  current_user = g.get(app.config['USER_PARAM'])
+  
+  #get the user_id of the user we want to follow
+  user_id = request.form['user_id']
+  #if the user_id is valid... 
+  db_cursor.execute('SELECT username FROM users WHERE userid=%s', (user_id,))
+  if (len(db_cursor.fetchall()) != 1):
+    return 'Not found!', 404
+  #and if the user is not already following them
+  db_cursor.execute('SELECT followingthisuserid FROM followers WHERE EXISTS (SELECT userid FROM followers WHERE userid=%s)', (user_id,))
+  result = db_cursor.fetchone()
+  if result is not None:
+    return 'Not found!', 404
+  #add the current user and the user they follow to the follow list
+  db_cursor.execute('INSERT INTO followers (userid,followingthisuserid) VALUES (%s,%s)', (user_id,current_user.id))
+  db.commit()
+  return "Now Following!"
   
 # handle display of direct messaging
 @app.route('/dm/<int:user_id>')
@@ -913,11 +946,12 @@ def close_db(ex):
   
 # grab a copy of the database  
 def get_database(db_name=None):
+  ## ///Remove port parameter from connect function at end of coding, needs to be 3306
   try:
     if db_name:
-      db = mysql.connector.connect(host=app.config['DB_HOST'], user=app.config['DB_USER'], password=app.config['DB_PASS'], database=db_name)
+      db = mysql.connector.connect(host=app.config['DB_HOST'], user=app.config['DB_USER'], password=app.config['DB_PASS'], database=db_name, port=3307)
     else:
-      db = mysql.connector.connect(host=app.config['DB_HOST'], user=app.config['DB_USER'], password=app.config['DB_PASS'])
+      db = mysql.connector.connect(host=app.config['DB_HOST'], user=app.config['DB_USER'], password=app.config['DB_PASS'], port=3307)
   except Exception as ex:
     sys.stderr.write('Error Connecting to Database\n')
     raise ex

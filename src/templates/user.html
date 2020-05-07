@@ -97,7 +97,10 @@
           {% if cur_user.id == user.id %}
             <a href="{{ url_for('generate_direct_message_listing') }}"><button class="option-button">View Direct Message Listing</button></a>
           {% else %}
-            <button class="option-button">Follow</button><br />
+            <form action="{{ url_for('create_new_follower') }}" method="post" enctype="multipart/form-data">
+            <input type="hidden" name="user_id" value="{{ user.id }}" />
+            <button class="option-btn" id="follow-{{ user.id }}">Follow</button><br />
+            </form>
             <a href="{{ url_for('generate_direct_message_page', user_id=user.id) }}"><button class="option-button">Direct Message</button></a>
           {% endif %}
         {% endif %}
