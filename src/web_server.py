@@ -163,7 +163,12 @@ def generate_home_page():
   follow = []
   recent = []
   
+  #Get the latest images from users the current users follow.
+  #db_cursor.execute('SELECT images.imageid, images.imgtitle, images.userid, images.imgfile, images.imgdesc, images.likes, users.username FROM images JOIN users ON images.userid=users.userid ORDER BY images.imageid DESC LIMIT 3')
+  
+  
   db_cursor.execute('SELECT images.imageid, images.imgtitle, images.userid, images.imgfile, images.imgdesc, images.likes, users.username FROM images JOIN users ON images.userid=users.userid ORDER BY images.imageid DESC LIMIT 3')
+  
   
   # get data on the lastest three images
   for (imageid, imgtitle, userid, imgfile, imgdesc, likes, username) in db_cursor:
@@ -610,12 +615,12 @@ def create_new_follower():
   if (len(db_cursor.fetchall()) != 1):
     return 'Not found!', 404
   #and if the user is not already following them
-  db_cursor.execute('SELECT followingthisuserid FROM followers WHERE EXISTS (SELECT userid FROM followers WHERE userid=%s)', (user_id,))
+  db_cursor.execute('SELECT followingthisuserid FROM followers WHERE userid=%s AND followingthisuserid=%s', (current_user.id, user_id)) 
   result = db_cursor.fetchone()
   if result is not None:
-    return 'Not found!', 404
+    return 'Already Following!', 404
   #add the current user and the user they follow to the follow list
-  db_cursor.execute('INSERT INTO followers (userid,followingthisuserid) VALUES (%s,%s)', (user_id,current_user.id))
+  db_cursor.execute('INSERT INTO followers (userid,followingthisuserid) VALUES (%s,%s)', (current_user.id, user_id))
   db.commit()
   return "Now Following!"
   
