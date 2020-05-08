@@ -163,31 +163,31 @@ def generate_home_page():
   follow = []
   recent = []
   
-  #Get the latest images from users the current users follow.
-  db_cursor.execute('SELECT images.imageid, images.imgtitle, images.userid, images.imgfile, images.imgdesc, images.likes, users.username FROM images JOIN followers ON images.userid=users.userid ORDER BY images.imageid DESC LIMIT 3')
-  
+  if current_user:
+    #Get the latest images from users the current users follow.
+    db_cursor.execute('SELECT images.imageid, images.imgtitle, images.userid, images.imgfile, images.imgdesc, images.likes, users.username FROM images INNER JOIN followers ON images.userid=followers.followingthisuserid AND followers.userid=%s JOIN users ON images.userid=users.userid ORDER BY images.imageid DESC LIMIT 3',(current_user.id,))
     
-  # get data on the lastest three images
-  for (imageid, imgtitle, userid, imgfile, imgdesc, likes, username) in db_cursor:
-    image = ImageInfo()
-    image.id = imageid
-    image.userid = userid
-    image.title = imgtitle
-    image.username = username
-    image.path = url_for('send_user_image', img_name=imgfile)
-    image.likes = likes
-    image.description = imgdesc
-    follow.append(image)
-  
-  # now get the comments for each recent image
-  for image in recent:
-    db_cursor.execute('SELECT comments.userid, comments.comtext, users.username FROM comments JOIN users ON comments.userid=users.userid WHERE comments.imageid=%s', (image.id,))
-    for (userid, comtext, username) in db_cursor:
-      com = MessageInfo()
-      com.userid = userid
-      com.username = username
-      com.message = comtext
-      image.comments.append(com)
+    # get data on the lastest three images
+    for (imageid, imgtitle, userid, imgfile, imgdesc, likes, username) in db_cursor:
+      image = ImageInfo()
+      image.id = imageid
+      image.userid = userid
+      image.title = imgtitle
+      image.username = username
+      image.path = url_for('send_user_image', img_name=imgfile)
+      image.likes = likes
+      image.description = imgdesc
+      follow.append(image)
+    
+    # now get the comments for each recent image
+    for image in recent:
+      db_cursor.execute('SELECT comments.userid, comments.comtext, users.username FROM comments JOIN users ON comments.userid=users.userid WHERE comments.imageid=%s', (image.id,))
+      for (userid, comtext, username) in db_cursor:
+        com = MessageInfo()
+        com.userid = userid
+        com.username = username
+        com.message = comtext
+        image.comments.append(com)
   
   db_cursor.execute('SELECT images.imageid, images.imgtitle, images.userid, images.imgfile, images.imgdesc, images.likes, users.username FROM images JOIN users ON images.userid=users.userid ORDER BY images.imageid DESC LIMIT 3')
   
