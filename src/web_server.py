@@ -139,6 +139,7 @@ def generate_home_page():
     image.path = url_for('send_user_image', img_name=imgfile)
     image.likes = likes
     image.description = imgdesc
+
     recent.append(image)
   
   # now get the comments for each recent image
@@ -221,17 +222,13 @@ def process_like():
   if (len(db_cursor.fetchall())) != 1:
     return 'Image does not exist!', 400
   
-  # get list of ids that liked post
+  # check if user alreadt liked post
   db_cursor.execute('SELECT userid FROM likes WHERE userid=%s AND likesthisimageid=%s', (current_user.id, imageid))
   post_like = db_cursor.fetchall()
   # check if current user is in that list
   # if they are:
-  if len(post_like) == 1:
-    # decrement like count
-    db_cursor.execute('UPDATE images SET likes=likes-1 WHERE imageid=%s', (imageid,))
-    db.commit()
-    # remove current user from list of users that liked post
-    db_cursor.execute('DELETE FROM likes WHERE userid=%s AND likesthisimageid=%s', (current_user.id, imageid))
+  if len(post_like) != 0:
+    return 'User already liked image.'
   # if they are not:
   else:
     # increment like count
