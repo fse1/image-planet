@@ -410,8 +410,14 @@ def generate_user_page(user_id):
       com.username = username
       com.message = comtext
       image.comments.append(com)
+      
+  db_cursor.execute('SELECT followingthisuserid FROM followers WHERE userid=%s', (current_user.id,))
+  followed = False
+  for followingthisuserid in db_cursor:
+    if followingthisuserid[0] == user_id:
+          followed = True
   
-  return render_template('user.html', user=user, images=image_list, cur_user=current_user)
+  return render_template('user.html', user=user, images=image_list, cur_user=current_user, followed=followed)
   
 # handle display of the login/registration form
 @app.route('/login-or-register')
@@ -644,7 +650,7 @@ def create_new_follower():
   #add the current user and the user they follow to the follow list
   db_cursor.execute('INSERT INTO followers (userid,followingthisuserid) VALUES (%s,%s)', (current_user.id, user_id))
   db.commit()
-  return "Now Following!"
+  return redirect(url_for('generate_user_page', user_id=user_id))
   
 # handle display of direct messaging
 @app.route('/dm/<int:user_id>')
