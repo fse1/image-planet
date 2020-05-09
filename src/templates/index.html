@@ -86,6 +86,7 @@
           {% else %}
             <p class="no-recent-images">No images have been uploaded yet ):</p>
           {% endfor %}
+          <h2>Latest Posted Images</h2>
           {% for image in recent_images %}
             <div class="image-container" id="user-{{ image.userid }}-img-{{ image.id }}">
               <div class="img-header">
