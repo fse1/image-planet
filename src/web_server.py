@@ -1,3 +1,5 @@
+# Python 3.7
+
 # Made using https://flask.palletsprojects.com/ as a reference
 
 import sys
@@ -20,7 +22,8 @@ app = Flask(__name__)
 app.config.update(DB_USER=(os.environ['DB_USER']), DB_HOST='127.0.0.1', DB_PASS=(os.environ['DB_PASS']), DB_NAME='imageplanet', DB_PARAM='db')        # database information
 app.config['UPLOAD_DIRECTORY'] = 'user-images'                                                                                                        # upload image directory
 app.config['MAX_CONTENT_LENGTH'] = 15 * 1024 * 1024                                                                                                   # max file size (15 MB)
-app.config['MAX_COMMENT_LENGTH'] = 50                                                                                                                 # max length of comment
+app.config['MAX_COMMENT_LENGTH'] = 50                                                              
+                                                   # max length of comment
 app.config.update(SC_N=16384, SC_R=8, SC_P=1)                                                                                                         # scrypt parameters
 app.config.update(USERNAME_MIN=3, USERNAME_MAX=15, PASSWORD_MIN=8, PASSWORD_MAX=100)                                                                  # username and password length requirements
 app.config.update(PASS_SALT_SIZE=16, SESSION_TOKEN_SIZE=32, CSRF_TOKEN_SIZE=32, TOKEN_SALT=b'token', TOKEN_EXPIRATION=datetime.timedelta(days=7))     # security info
@@ -124,7 +127,7 @@ def check_unread_messages(cursor, current_user):
   
   if not current_user:
     return
-    
+  
   # check for both low and high user ids
   cursor.execute('SELECT dmid FROM directmsg WHERE lowuserid=%s AND lowuserread=0 LIMIT 1', (current_user.id,))
   data = cursor.fetchall()
@@ -162,7 +165,34 @@ def generate_home_page():
   follow = []
   recent = []
   
+  if current_user:
+    #Get the latest images from users the current users follow.
+    db_cursor.execute('SELECT images.imageid, images.imgtitle, images.userid, images.imgfile, images.imgdesc, images.likes, users.username FROM images INNER JOIN followers ON images.userid=followers.followingthisuserid AND followers.userid=%s JOIN users ON images.userid=users.userid ORDER BY images.imageid DESC LIMIT 3',(current_user.id,))
+    
+    # get data on the lastest three images
+    for (imageid, imgtitle, userid, imgfile, imgdesc, likes, username) in db_cursor:
+      image = ImageInfo()
+      image.id = imageid
+      image.userid = userid
+      image.title = imgtitle
+      image.username = username
+      image.path = url_for('send_user_image', img_name=imgfile)
+      image.likes = likes
+      image.description = imgdesc
+      follow.append(image)
+    
+    # now get the comments for each recent image
+    for image in recent:
+      db_cursor.execute('SELECT comments.userid, comments.comtext, users.username FROM comments JOIN users ON comments.userid=users.userid WHERE comments.imageid=%s', (image.id,))
+      for (userid, comtext, username) in db_cursor:
+        com = MessageInfo()
+        com.userid = userid
+        com.username = username
+        com.message = comtext
+        image.comments.append(com)
+  
   db_cursor.execute('SELECT images.imageid, images.imgtitle, images.userid, images.imgfile, images.imgdesc, images.likes, users.username FROM images JOIN users ON images.userid=users.userid ORDER BY images.imageid DESC LIMIT 3')
+  
   
   # get data on the lastest three images
   for (imageid, imgtitle, userid, imgfile, imgdesc, likes, username) in db_cursor:
@@ -174,6 +204,7 @@ def generate_home_page():
     image.path = url_for('send_user_image', img_name=imgfile)
     image.likes = likes
     image.description = imgdesc
+
     recent.append(image)
   
   # now get the comments for each recent image
@@ -256,8 +287,23 @@ def process_like():
   if (len(db_cursor.fetchall())) != 1:
     return 'Image does not exist!', 400
   
+  # check if user alreadt liked post
+  db_cursor.execute('SELECT userid FROM likes WHERE userid=%s AND likesthisimageid=%s', (current_user.id, imageid))
+  post_like = db_cursor.fetchall()
+  # check if current user is in that list
+  # if they are:
+  if len(post_like) != 0:
+    return 'User already liked image.'
+  # if they are not:
+  else:
+    # increment like count
+    db_cursor.execute('UPDATE images SET likes=likes+1 WHERE imageid=%s', (imageid,))
+    db.commit()
+    # add current user to list of users that liked post
+    db_cursor.execute('INSERT INTO likes (userid, likesthisimageid) VALUES (%s, %s)', (current_user.id, imageid))
+
   # now increment the like count
-  db_cursor.execute('UPDATE images SET likes=likes+1 WHERE imageid=%s', (imageid,))
+  #db_cursor.execute('UPDATE images SET likes=likes+1 WHERE imageid=%s', (imageid,))
   db.commit()
   
   # now send the new like to all connected clients
@@ -382,8 +428,14 @@ def generate_user_page(user_id):
       com.username = username
       com.message = comtext
       image.comments.append(com)
+      
+  db_cursor.execute('SELECT followingthisuserid FROM followers WHERE userid=%s', (current_user.id,))
+  followed = False
+  for followingthisuserid in db_cursor:
+    if followingthisuserid[0] == user_id:
+          followed = True
   
-  return render_template('user.html', user=user, images=image_list, cur_user=current_user)
+  return render_template('user.html', user=user, images=image_list, cur_user=current_user, followed=followed)
   
 # handle display of the login/registration form
 @app.route('/login-or-register')
@@ -588,6 +640,35 @@ def process_logout():
   db_cursor.execute('UPDATE users SET sessioncookiehash=NULL, csrftoken=NULL WHERE userid=%s', (current_user.id,))
   db.commit()
   return redirect(url_for('generate_home_page'))
+
+# handle following of new user
+@app.route('/follow', methods=['POST'])
+def create_new_follower():
+  # get the database if it does not exist
+  if not (app.config['DB_PARAM'] in g):
+    g.setdefault(app.config['DB_PARAM'], default=get_database(app.config['DB_NAME']))
+  db = g.get(app.config['DB_PARAM'])
+  db_cursor = db.cursor()
+  
+  # try to authenticate the user
+  check_session_token(db, db_cursor)
+  current_user = g.get(app.config['USER_PARAM'])
+  
+  #get the user_id of the user we want to follow
+  user_id = request.form['user_id']
+  #if the user_id is valid... 
+  db_cursor.execute('SELECT username FROM users WHERE userid=%s', (user_id,))
+  if (len(db_cursor.fetchall()) != 1):
+    return 'Not found!', 404
+  #and if the user is not already following them
+  db_cursor.execute('SELECT followingthisuserid FROM followers WHERE userid=%s AND followingthisuserid=%s', (current_user.id, user_id)) 
+  result = db_cursor.fetchone()
+  if result is not None:
+    return 'Already Following!', 404
+  #add the current user and the user they follow to the follow list
+  db_cursor.execute('INSERT INTO followers (userid,followingthisuserid) VALUES (%s,%s)', (current_user.id, user_id))
+  db.commit()
+  return redirect(url_for('generate_user_page', user_id=user_id))
   
 # handle display of direct messaging
 @app.route('/dm/<int:user_id>')
