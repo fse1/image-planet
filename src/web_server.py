@@ -979,12 +979,11 @@ def close_db(ex):
   
 # grab a copy of the database  
 def get_database(db_name=None):
-  ## ///Remove port parameter from connect function at end of coding, needs to be 3306
   try:
     if db_name:
-      db = mysql.connector.connect(host=app.config['DB_HOST'], user=app.config['DB_USER'], password=app.config['DB_PASS'], database=db_name, port=3307)
+      db = mysql.connector.connect(host=app.config['DB_HOST'], user=app.config['DB_USER'], password=app.config['DB_PASS'], database=db_name)
     else:
-      db = mysql.connector.connect(host=app.config['DB_HOST'], user=app.config['DB_USER'], password=app.config['DB_PASS'], port=3307)
+      db = mysql.connector.connect(host=app.config['DB_HOST'], user=app.config['DB_USER'], password=app.config['DB_PASS'])
   except Exception as ex:
     sys.stderr.write('Error Connecting to Database\n')
     raise ex
