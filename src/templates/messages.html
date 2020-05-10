@@ -5,8 +5,7 @@
     <title>Direct Messaging Listing :: Image Planet</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles/styles.css') }}">
     <script src="{{ url_for('static', filename='scripts/socket.io.js') }}"></script>
-    <script src="{{ url_for('static', filename='scripts/dm-cript.js') }}"></script>
-    <script src="{{ url_for('static', filename='scripts/socet-dm.js') }}"></script>
+    <script src="{{ url_for('static', filename='scripts/socket-dm-list.js') }}"></script>
   </head>
   <body>
     <header class="page-header">
@@ -25,14 +24,15 @@
     <main class="main-content-1-col">
       <div class="section-dummy"></div>
       <div class="section-main">
+        <input type="hidden" name="uid" class="user-id" value="{{ cur_user.id }}" />
         <div class="dm-listing">
-          <ul>
+          <ul class="dm-list">
           {% for conversation in direct_message_list %}
           {% if not conversation.empty %}
-          <li>{% if not conversation.read %} <span class="error-text">Unread Messages! - </span> {% endif %} <a href="{{  url_for('generate_direct_message_page', user_id=conversation.userid) }}">View Conversation</a> with <a href="{{ url_for('generate_user_page', user_id=conversation.userid) }}">{{ conversation.username }}</a></li>
+          <li id="conver-{{ conversation.userid }}">{% if not conversation.read %}<span class="error-text">Unread Messages! - </span> {% endif %} <a href="{{  url_for('generate_direct_message_page', user_id=conversation.userid) }}">View Conversation</a> with <a href="{{ url_for('generate_user_page', user_id=conversation.userid) }}">{{ conversation.username }}</a></li>
           {% endif %}
           {% else %}
-          <li>You do not have any direct messages yet ):</li>
+          <li class="empty-list">You do not have any direct messages yet ):</li>
           {% endfor %}
           </ul>
         </div>

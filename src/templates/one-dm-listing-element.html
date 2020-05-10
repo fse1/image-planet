@@ -1,0 +1,1 @@
+<li id="conver-{{ conversation.userid }}"><span class="error-text">Unread Messages! - </span> <a href="{{  url_for('generate_direct_message_page', user_id=conversation.userid) }}">View Conversation</a> with <a href="{{ url_for('generate_user_page', user_id=conversation.userid) }}">{{ conversation.username }}</a></li>

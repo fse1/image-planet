@@ -77,4 +77,7 @@ document.addEventListener('DOMContentLoaded', function () {
         
     });
     
+    // handle new messages. change the style of the header
+    socket.on('new-dm', newNotificationDM);
+    
 });

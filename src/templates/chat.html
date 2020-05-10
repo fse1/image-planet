@@ -6,7 +6,8 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='styles/styles.css') }}">
     <script src="{{ url_for('static', filename='scripts/socket.io.js') }}"></script>
     <script src="{{ url_for('static', filename='scripts/dm-script.js') }}"></script>
-    <script src="{{ url_for('static', filename='scripts/socet-dm.js') }}"></script>
+    <script src="{{ url_for('static', filename='scripts/socket-dm-common.js') }}"></script>
+    <script src="{{ url_for('static', filename='scripts/socket-dm.js') }}"></script>
   </head>
   <body>
     <header class="page-header">
@@ -30,6 +31,7 @@
     <main class="main-content-1-col">
       <div class="section-dummy"></div>
       <div class="section-main">
+        <input type="hidden" name="uid" class="user-id" value="{{ cur_user.id }}" />
         <div class="message-window">
           {% for dm in direct_messages %}
             <div class="message-block">
@@ -39,7 +41,7 @@
         </div>
         <div class="write-message-window">
           <form action="{{ url_for('process_dm_message') }}" method="post">
-            <input type="hidden" name="dmid" value="{{ dm_id }}" />
+            <input type="hidden" class="dm-id" name="dmid" value="{{ dm_id }}" />
             <label for="msg">Message:</label>
             <input type="text" id="msg" name="msg" size="50">
             <input type="submit" class="submit-dm-btn" value="Send">

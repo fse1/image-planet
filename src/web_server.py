@@ -766,6 +766,28 @@ def process_dm_message():
   db_cursor.execute('INSERT INTO messages (dmid, userid, msgtext) VALUES (%s, %s, %s)', (dmid, current_user.id, message))
   db.commit()
   
+  # now send notification to the users in the conversation. also need to get the username
+  db_cursor.execute('SELECT username FROM users WHERE userid=%s', (current_user.id,))
+  send_username = (db_cursor.fetchall())[0][0]
+  
+  msg = MessageInfo()
+  msg.userid = current_user.id
+  msg.username = send_username
+  msg.message = message
+  
+  dminfo = DirectMsgInfo()
+  dminfo.userid = current_user.id
+  dminfo.username = send_username
+  dminfo.dmid = dmid
+  
+  send_data = {}
+  send_data['dmid'] = dmid
+  send_data['senduserid'] = current_user.id
+  send_data['msghtml'] = render_template('one-dm-element.html', dm=msg)
+  send_data['listhtml'] = render_template('one-dm-listing-element.html', conversation=dminfo)
+  new_app.emit('new-dm', send_data, room=(app.config['USER_ROOM_PREFIX'] + str(data[0][0])))
+  new_app.emit('new-dm', send_data, room=(app.config['USER_ROOM_PREFIX'] + str(data[0][1])))
+  
   return 'Successfully submitted direct message!'
 
 # handle image upload form
@@ -876,6 +898,40 @@ def process_new_connnect():
   if current_user:
     join_room(app.config['USER_ROOM_PREFIX'] + str(current_user.id))
     
+# handle live direct message receipts
+@new_app.on('dm-receipt')
+def process_dm_receipt(dmid):
+
+  # get the database if it does not exist
+  if not (app.config['DB_PARAM'] in g):
+    g.setdefault(app.config['DB_PARAM'], default=get_database(app.config['DB_NAME']))
+  db = g.get(app.config['DB_PARAM'])
+  db_cursor = db.cursor()
+  
+  # try to authenticate user
+  userid = None
+  room_data = rooms()
+  for room in room_data:
+    if room.startswith(app.config['USER_ROOM_PREFIX']):
+      userid = int(room[len(app.config['USER_ROOM_PREFIX']):])
+  
+  if not userid:
+    return
+  
+  # make sure the direct message conversation exists
+  db_cursor.execute('SELECT lowuserid, highuserid FROM directmsg WHERE dmid=%s', (dmid,))
+  data = db_cursor.fetchall()
+  
+  if (len(data) != 1):
+    return
+    
+  # make sure user is in conversation and update read values
+  if userid == data[0][0]:
+    db_cursor.execute('UPDATE directmsg SET lowuserread=1 WHERE dmid=%s', (dmid,))
+    db.commit()
+  elif userid == data[0][1]:
+    db_cursor.execute('UPDATE directmsg SET highuserread=1 WHERE dmid=%s', (dmid,))
+    db.commit()
     
 @app.cli.command('init-db')
 def init_database():

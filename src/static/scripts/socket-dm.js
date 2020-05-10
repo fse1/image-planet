@@ -2,79 +2,37 @@
 // wait until the base HTML is loaded
 document.addEventListener('DOMContentLoaded', function () {
     
-    // get needed elements
-    const uploadContainer = document.querySelector('div.upload-image-container');
-    const userID = (document.querySelector('div.profile input.user-id')).value;
-    
-    // create socket
-    let socket = io();
+  // get needed elements and values
+  const chatContainer = document.querySelector('main div.message-window');
+  const userID = parseInt((document.querySelector('main input.user-id')).value);
+  const dmID = (document.querySelector('main input.dm-id')).value;
+  
+  // create socket
+  let socket = io();
 
-    // handle new images. append to bottom of uploaded images
-    socket.on('new-image-full', function (data) { 
-    
-      // make sure it is this user's image
-      if (data.userid == userID)
-      {
-        // handle the no image case
-        const noImage = document.querySelectorAll('.upload-image-container p.no-images');
-        if (noImage.length > 0) {
-          noImage[0].outerHTML = data.html;
-        }
-        else
-        {
-          let newImageContainer = document.createElement("div");
-          uploadContainer.appendChild(newImageContainer);
-          newImageContainer.outerHTML = data.html;
-        }
-        
-        // now set up the AJAX handlers
-        const likeBtn = document.querySelector('#user-' + data.userid + '-img-' + data.imageid + ' button.like-btn');
-        const commentSubmit = document.querySelector('#user-' + data.userid + '-img-' + data.imageid + ' input.submit-comment-btn');
-        likeBtn.onclick = likeClick;
-        commentSubmit.onclick = comClick;
-      }
+  // handle new direct messages
+  socket.on('new-dm', function (data) { 
+
+    // make sure it is for this direct message
+    if (data.dmid === dmID)
+    {
+      // append the chat message
+      let newChatElement = document.createElement("div");
+      chatContainer.appendChild(newChatElement);
+      newChatElement.outerHTML = data.msghtml;
       
-    });
-    
-    // handle new comments. append to bottom of comment container
-    socket.on('new-comment-full', function (data) { 
-    
-      // try to find the appropriate comment div
-      commentContainerCSSID = '#com-block-' + data.imageid;
-      const commentContainer = document.querySelector(commentContainerCSSID);
-      
-      if (commentContainer)
+      // send a confirmation back if necessary
+      if (data.senduserid !== userID)
       {
-        // check if there are no comments and handle appropriately
-        const commentBlocks = document.querySelectorAll(commentContainerCSSID + ' div.comment-block')
-        if (commentBlocks.length > 0) {
-          let newCommentBlock = document.createElement("div");
-          commentContainer.appendChild(newCommentBlock);
-          newCommentBlock.outerHTML = data.html;
-        }
-        else
-        {
-          commentContainer.innerHTML = data.html;
-        }
+        socket.emit('dm-receipt', data.dmid);
       }
-        
-    });
+    }
+    // else, push a notification
+    else
+    {
+      newNotificationDM(data);
+    }
     
-    // handle new likes. increment the appropriate like count
-    socket.on('new-like', function (data) { 
-    
-      // try to find the appropriate like button
-      const likeBtn = document.querySelector('#like-' + data.imageid);
-      
-      if (likeBtn)
-      {
-        let likeText = likeBtn.innerHTML;
-        let firstParen = likeText.lastIndexOf('(');
-        let secondParen = likeText.lastIndexOf(')');
-        let likeCount = parseInt(likeText.slice(firstParen + 1, secondParen));
-        likeBtn.innerHTML = 'Like This Image! (' + ((likeCount + 1).toString()) + ')';
-      }
-        
-    });
+  });
     
 });
