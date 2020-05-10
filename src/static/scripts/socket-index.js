@@ -36,13 +36,13 @@ document.addEventListener('DOMContentLoaded', function () {
     
       // try to find the appropriate comment div
       commentContainerCSSID = '#com-block-' + data.imageid;
-      const commentContainer = document.querySelector(commentContainerCSSID);
+      const commentContainers = document.querySelectorAll(commentContainerCSSID);
       
-      if (commentContainer)
+      for (commentContainer of commentContainers)
       {
         // check if there are no comments and handle appropriately
-        const commentBlocks = document.querySelectorAll(commentContainerCSSID + ' div.comment-block')
-        if (commentBlocks.length > 0) {
+        const commentBlocks = document.querySelectorAll(commentContainerCSSID + ' p.no-com')
+        if (commentBlocks.length === 0) {
           let newCommentBlock = document.createElement("div");
           commentContainer.appendChild(newCommentBlock);
           newCommentBlock.outerHTML = data.html;
@@ -59,9 +59,9 @@ document.addEventListener('DOMContentLoaded', function () {
     socket.on('new-like', function (data) { 
     
       // try to find the appropriate like button
-      const likeBtn = document.querySelector('#like-' + data.imageid);
+      const likeBtns = document.querySelectorAll('#like-' + data.imageid);
       
-      if (likeBtn)
+      for (likeBtn of likeBtns)
       {
         let likeText = likeBtn.innerHTML;
         let firstParen = likeText.lastIndexOf('(');

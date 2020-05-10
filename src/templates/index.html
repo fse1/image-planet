@@ -57,7 +57,7 @@
                   <p>{{ image.description }}</p>
                   <form action="{{ url_for('process_like') }}" method="post" enctype="multipart/form-data">
                     <input type="hidden" name="imgid" value="{{ image.id }}" />
-                    <button class="like-btn" id="like-{{ image.id }}">Like This Image! ({{ image.likes }})</button>
+                    <button class="like-btn" id="like-{{ image.id }}" {% if image.liked or not cur_user %}disabled{% endif %}>Like This Image! ({{ image.likes }})</button>
                   </form>
                 </div>
                 <div class="comment-container">
@@ -69,7 +69,7 @@
                         <p class="com-com">{{ comment.message }}</p>
                       </div>
                     {% else %}
-                      <p>No comments yet.</p>
+                      <p class="no-com">No comments yet.</p>
                     {% endfor %}
                   </div>
                   <br />
@@ -77,62 +77,64 @@
                     <form action="{{ url_for('process_comment') }}" method="post" enctype="multipart/form-data">
                       <input type="hidden" name="imgid" value="{{ image.id }}" />
                       <label for="comment">Add Comment:</label>
-                      <input type="text" name="comment" id="comment" size="50" />
-                      <input type="submit" value="Submit" class="submit-comment-btn" />
+                      <input type="text" name="comment" id="comment" size="50" {% if not cur_user %}disabled{% endif %} />
+                      <input type="submit" value="Submit" class="submit-comment-btn" {% if not cur_user %}disabled{% endif %} />
                     </form>
                   </div>
                 </div>
               </div>
             </div>
           {% else %}
-            <p class="no-recent-images">No images have been uploaded yet ):</p>
+            <p class="no-follow-images">You are not following anyone yet, or none of the users you follow have uploaded any images yet ):</p>
           {% endfor %}
-          <h2>Latest Posted Images</h2>
-          {% for image in recent_images %}
-            <div class="image-container" id="user-{{ image.userid }}-img-{{ image.id }}">
-              <div class="img-header">
-                <h3 class="img-title">{{ image.title }}</h3>
-                <h3 class="img-author">By: <a href="{{ url_for('generate_user_page', user_id=image.userid) }}">{{ image.username }}</a></h3>
-              </div>
-              <div class="img-img">
-                <img src="{{ image.path }}" alt="User-submitted image" />
-              </div>
-              <div class="img-footer">
-                <div class="img-bottom">
-                  <h3>Description:</h3>
-                  <p>{{ image.description }}</p>
-                  <form action="{{ url_for('process_like') }}" method="post" enctype="multipart/form-data">
-                    <input type="hidden" name="imgid" value="{{ image.id }}" />
-                    <button class="like-btn" id="like-{{ image.id }}">Like This Image! ({{ image.likes }})</button>
-                  </form>
+          <div class="recent-image-container">
+            <h2>Most Recent Images</h2>
+            {% for image in recent_images %}
+              <div class="image-container" id="user-{{ image.userid }}-img-{{ image.id }}">
+                <div class="img-header">
+                  <h3 class="img-title">{{ image.title }}</h3>
+                  <h3 class="img-author">By: <a href="{{ url_for('generate_user_page', user_id=image.userid) }}">{{ image.username }}</a></h3>
                 </div>
-                <div class="comment-container">
-                  <h3>Comments</h3>
-                  <div id="com-block-{{ image.id }}">
-                    {% for comment in image.comments %}
-                      <div class="comment-block">
-                        <p class="com-author"><a href="{{ url_for('generate_user_page', user_id=comment.userid) }}">{{ comment.username }}</a></p>
-                        <p class="com-com">{{ comment.message }}</p>
-                      </div>
-                    {% else %}
-                      <p>No comments yet.</p>
-                    {% endfor %}
-                  </div>
-                  <br />
-                  <div class="comment-submission">
-                    <form action="{{ url_for('process_comment') }}" method="post" enctype="multipart/form-data">
+                <div class="img-img">
+                  <img src="{{ image.path }}" alt="User-submitted image" />
+                </div>
+                <div class="img-footer">
+                  <div class="img-bottom">
+                    <h3>Description:</h3>
+                    <p>{{ image.description }}</p>
+                    <form action="{{ url_for('process_like') }}" method="post" enctype="multipart/form-data">
                       <input type="hidden" name="imgid" value="{{ image.id }}" />
-                      <label for="comment">Add Comment:</label>
-                      <input type="text" name="comment" id="comment" size="50" />
-                      <input type="submit" value="Submit" class="submit-comment-btn" />
+                      <button class="like-btn" id="like-{{ image.id }}" {% if image.liked  or not cur_user %}disabled{% endif %}>Like This Image! ({{ image.likes }})</button>
                     </form>
+                  </div>
+                  <div class="comment-container">
+                    <h3>Comments</h3>
+                    <div id="com-block-{{ image.id }}">
+                      {% for comment in image.comments %}
+                        <div class="comment-block">
+                          <p class="com-author"><a href="{{ url_for('generate_user_page', user_id=comment.userid) }}">{{ comment.username }}</a></p>
+                          <p class="com-com">{{ comment.message }}</p>
+                        </div>
+                      {% else %}
+                        <p class="no-com">No comments yet.</p>
+                      {% endfor %}
+                    </div>
+                    <br />
+                    <div class="comment-submission">
+                      <form action="{{ url_for('process_comment') }}" method="post" enctype="multipart/form-data">
+                        <input type="hidden" name="imgid" value="{{ image.id }}" />
+                        <label for="comment">Add Comment:</label>
+                        <input type="text" name="comment" id="comment" size="50" {% if not cur_user %}disabled{% endif %} />
+                        <input type="submit" value="Submit" class="submit-comment-btn" {% if not cur_user %}disabled{% endif %} />
+                      </form>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          {% else %}
-            <p class="no-recent-images">No images have been uploaded yet ):</p>
-          {% endfor %}
+            {% else %}
+              <p class="no-recent-images">No images have been uploaded yet ):</p>
+            {% endfor %}
+          </div>
         </div>
       </div>
       <div class="section-main">
@@ -149,7 +151,7 @@
       <div class="section-dummy"></div>
     </main>
     <footer class="page-footer">
-          <p>&copy;2020 Image Planet</p>
+      <p>&copy;2020 Image Planet</p>
     </footer>
   </body>
 </html>

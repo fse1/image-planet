@@ -27,8 +27,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // adjust input
     data.senduserid = data.senduserid.toString();
-    console.log(data.senduserid);
-    console.log(userid_list);
     
     if (data.senduserid !== userID) {
       
@@ -44,7 +42,7 @@ document.addEventListener('DOMContentLoaded', function () {
       else
       {
         // add conversation to list and append element. check for emptiness
-        userid_list.push(data.senduserid);
+        userid_list.push('conver-' + data.senduserid);
         console.log(userid_list);
         
         if (emptyElement) {
