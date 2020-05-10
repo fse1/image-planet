@@ -5,7 +5,7 @@
 import sys
 import os
 from flask import Flask, url_for, redirect, g, render_template, request, safe_join, send_from_directory, make_response
-from flask_socketio import SocketIO, join_room
+from flask_socketio import SocketIO, join_room, rooms
 import mysql.connector
 import hashlib
 import secrets
@@ -28,6 +28,7 @@ app.config.update(USERNAME_MIN=3, USERNAME_MAX=15, PASSWORD_MIN=8, PASSWORD_MAX=
 app.config.update(PASS_SALT_SIZE=16, SESSION_TOKEN_SIZE=32, CSRF_TOKEN_SIZE=32, TOKEN_SALT=b'token', TOKEN_EXPIRATION=datetime.timedelta(days=7))     # security info
 app.config.update(SESSION_COOKIE_NAME='session-token', USER_PARAM='current_user')                                                                     # security info continued
 app.config.update(DEFAULT_PROFILE_PIC='default.jpg', DEFAULT_PROFILE_DESCRIPTION='No profile description.')                                           # default database fields
+app.config.update(USER_ROOM_PREFIX='user-', GENERAL_ROOM='general-notifications')                                                                     # socketio room information
 new_app = SocketIO(app, cors_allowed_origins='*')
 
 
@@ -65,6 +66,17 @@ class UserInfo():
     self.session_hash = b''
     self.session_expiration = datetime.date.today()
     self.csrf_token = ''
+    self.unread_messages = False
+    
+# define a class to hold information about direct messages
+class DirectMsgInfo():
+
+  def __init__(self):
+    self.dmid = 0
+    self.userid = 0
+    self.username = ''
+    self.read = False
+    self.empty = False
 
 
 # check the session token
@@ -109,7 +121,29 @@ def check_session_token(db, cursor):
   # now set the actual user
   g.setdefault(app.config['USER_PARAM'], default=user)
 
-
+# check for unread messages
+def check_unread_messages(cursor, current_user):
+  
+  if not current_user:
+    return
+    
+  # check for both low and high user ids
+  cursor.execute('SELECT dmid FROM directmsg WHERE lowuserid=%s AND lowuserread=0 LIMIT 1', (current_user.id,))
+  data = cursor.fetchall()
+  
+  if (len(data) == 1):
+    current_user.unread_messages = True
+    return
+  
+  cursor.execute('SELECT dmid FROM directmsg WHERE highuserid=%s AND highuserread=0 LIMIT 1', (current_user.id,))
+  data = cursor.fetchall()
+  
+  if (len(data) == 1):
+    current_user.unread_messages = True
+    return
+    
+  current_user.unread_messages = False
+  
 # handle home page
 @app.route('/')
 def generate_home_page():
@@ -123,6 +157,9 @@ def generate_home_page():
   # try to authenticate the user
   check_session_token(db, db_cursor)
   current_user = g.get(app.config['USER_PARAM'])
+  
+  # check for unread messages
+  check_unread_messages(db_cursor, current_user)
   
   follow = []
   recent = []
@@ -262,6 +299,9 @@ def generate_image_gallery():
   check_session_token(db, db_cursor)
   current_user = g.get(app.config['USER_PARAM'])
   
+  # check for unread messages
+  check_unread_messages(db_cursor, current_user)
+  
   display_images = []
   
   db_cursor.execute('SELECT userid, imgfile FROM images')
@@ -288,6 +328,9 @@ def generate_user_list():
   # try to authenticate the user
   check_session_token(db, db_cursor)
   current_user = g.get(app.config['USER_PARAM'])
+  
+  # check for unread messages
+  check_unread_messages(db_cursor, current_user)
   
   user_list = []
   
@@ -321,6 +364,9 @@ def generate_user_page(user_id):
   data = db_cursor.fetchall()
   if not (len(data) == 1):
     return 'Not Found!', 404
+  
+  # check for unread messages
+  check_unread_messages(db_cursor, current_user)
   
   user = UserInfo()
   for (username, profilepic, profiledesc) in data:
@@ -562,10 +608,183 @@ def process_logout():
   return redirect(url_for('generate_home_page'))
   
 # handle display of direct messaging
-@app.route('/direct-msg')
-def generate_direct_message_page():
+@app.route('/dm/<int:user_id>')
+def generate_direct_message_page(user_id):
 
-  return render_template('chat.html')
+  # get the database if it does not exist
+  if not (app.config['DB_PARAM'] in g):
+    g.setdefault(app.config['DB_PARAM'], default=get_database(app.config['DB_NAME']))
+  db = g.get(app.config['DB_PARAM'])
+  db_cursor = db.cursor()
+  
+  # try to authenticate the user
+  check_session_token(db, db_cursor)
+  current_user = g.get(app.config['USER_PARAM'])
+  
+  # if not logged in, redirect to login page
+  if not current_user:
+    return redirect(url_for('display_login_register_page'))
+    
+  # prevent direct message with self
+  if user_id == current_user.id:
+    return 'Not found!', 404
+    
+  # make sure the other user exists
+  db_cursor.execute('SELECT username FROM users WHERE userid=%s', (user_id,))
+  if (len(db_cursor.fetchall()) != 1):
+    return 'Not found!', 404
+  
+  # determine ordering of user ids and status of requesting user id
+  lowid = None
+  highid = None
+  cur_islow = False
+  
+  if user_id > current_user.id:
+    lowid = current_user.id
+    highid = user_id
+    cur_islow = True
+  else:
+    lowid = user_id
+    highid = current_user.id
+    
+  # query database for direct message id; if none, create an entry
+  dmid = None
+  db_cursor.execute('SELECT dmid FROM directmsg WHERE lowuserid=%s AND highuserid=%s', (lowid, highid))
+  data = db_cursor.fetchall()
+  if len(data) == 1:
+    dmid = data[0][0]
+    if cur_islow:
+      db_cursor.execute('UPDATE directmsg SET lowuserread=1 WHERE dmid=%s', (dmid,))
+      db.commit()
+    else:
+      db_cursor.execute('UPDATE directmsg SET highuserread=1 WHERE dmid=%s', (dmid,))
+      db.commit()
+  else:
+    db_cursor.execute('INSERT INTO directmsg (lowuserid, highuserid, lowuserread, highuserread) VALUES (%s, %s, %s, %s)', (lowid, highid, 1, 1))
+    db.commit()
+    dmid = db_cursor.lastrowid
+  
+  # gather information about the messages
+  direct_msgs = []
+  db_cursor.execute('SELECT messages.userid, messages.msgtext, users.username FROM messages JOIN users ON messages.userid=users.userid WHERE messages.dmid=%s ORDER BY messages.dmid', (dmid,))
+  
+  for (userid, msgtext, username) in db_cursor:
+    msg = MessageInfo()
+    msg.userid = userid
+    msg.username = username
+    msg.message = msgtext
+    direct_msgs.append(msg)
+    
+  # check for unread messages
+  check_unread_messages(db_cursor, current_user)
+
+  return render_template('chat.html', cur_user=current_user, direct_messages=direct_msgs, dm_id=dmid)
+  
+# handle display of direct message conversations
+@app.route('/messages')
+def generate_direct_message_listing():
+
+  # get the database if it does not exist
+  if not (app.config['DB_PARAM'] in g):
+    g.setdefault(app.config['DB_PARAM'], default=get_database(app.config['DB_NAME']))
+  db = g.get(app.config['DB_PARAM'])
+  db_cursor = db.cursor()
+  
+  # try to authenticate the user
+  check_session_token(db, db_cursor)
+  current_user = g.get(app.config['USER_PARAM'])
+  
+  # if not logged in, redirect to login page
+  if not current_user:
+    return redirect(url_for('display_login_register_page'))
+  
+  # store direct message conversations
+  direct_msgs = []
+  
+  # get all low user id conversations and then all high user id conversations
+  db_cursor.execute('SELECT directmsg.dmid, directmsg.lowuserread, directmsg.highuserid, users.username FROM directmsg JOIN users ON directmsg.highuserid=users.userid WHERE directmsg.lowuserid=%s', (current_user.id,))
+  
+  for (dmid, lowuserread, highuserid, username) in db_cursor:
+    dminfo = DirectMsgInfo()
+    dminfo.userid = highuserid
+    dminfo.username = username
+    dminfo.dmid = dmid
+    dminfo.read = lowuserread
+    direct_msgs.append(dminfo)
+    
+  db_cursor.execute('SELECT directmsg.dmid, directmsg.highuserread, directmsg.lowuserid, users.username FROM directmsg JOIN users ON directmsg.lowuserid=users.userid WHERE directmsg.highuserid=%s', (current_user.id,))
+  
+  for (dmid, highuserread, lowuserid, username) in db_cursor:
+    dminfo = DirectMsgInfo()
+    dminfo.userid = lowuserid
+    dminfo.username = username
+    dminfo.dmid = dmid
+    dminfo.read = highuserread
+    direct_msgs.append(dminfo)
+     
+  # handle any direct messages that are empty
+  no_valid_entries = True
+  for dm in direct_msgs:
+    db_cursor.execute('SELECT userid FROM messages WHERE dmid=%s LIMIT 1', (dm.dmid,))
+    if len(db_cursor.fetchall()) != 1:
+      dm.empty = True
+    else:
+      dm.empty = False
+      no_valid_entries = False
+      
+  if no_valid_entries:
+    direct_msgs = []
+
+  return render_template('messages.html', cur_user=current_user, direct_message_list=direct_msgs)
+  
+# handle direct message submission
+@app.route('/submit-dm', methods=['POST'])
+def process_dm_message():
+  
+  # get the database if it does not exist
+  if not (app.config['DB_PARAM'] in g):
+    g.setdefault(app.config['DB_PARAM'], default=get_database(app.config['DB_NAME']))
+  db = g.get(app.config['DB_PARAM'])
+  db_cursor = db.cursor()
+  
+  # try to authenticate the user
+  check_session_token(db, db_cursor)
+  current_user = g.get(app.config['USER_PARAM'])
+  
+  # if not logged in, reject
+  if not current_user:
+    return 'Not Authenticated!', 403
+  
+  # get form data fields
+  message = request.form['msg']
+  dmid = request.form['dmid']
+  
+  # reject blank messages
+  if len(message.strip()) == 0:
+    return 'Cannot send blank message!', 400
+  
+  # look up the current dmid
+  db_cursor.execute('SELECT lowuserid, highuserid FROM directmsg WHERE dmid=%s', (dmid,))
+  data = db_cursor.fetchall()
+  
+  if (len(data) != 1):
+    return 'Nonexistant Conversation!', 400
+    
+  # make sure user is in conversation and update read values
+  if current_user.id == data[0][0]:
+    db_cursor.execute('UPDATE directmsg SET highuserread=0 WHERE dmid=%s', (dmid,))
+    db.commit()
+  elif current_user.id == data[0][1]:
+    db_cursor.execute('UPDATE directmsg SET lowuserread=0 WHERE dmid=%s', (dmid,))
+    db.commit()
+  else:
+    return 'Not Party to this Conversation!', 403
+    
+  # finally add the message
+  db_cursor.execute('INSERT INTO messages (dmid, userid, msgtext) VALUES (%s, %s, %s)', (dmid, current_user.id, message))
+  db.commit()
+  
+  return 'Successfully submitted direct message!'
 
 # handle image upload form
 @app.route('/upload-image', methods=['GET', 'POST'])
@@ -583,6 +802,9 @@ def handle_image_upload():
   
   if not current_user:
     return redirect(url_for('display_login_register_page'))
+  
+  # check for unread messages
+  check_unread_messages(db_cursor, current_user)
   
   # check for actual upload versus form view
   if request.method == 'GET':
@@ -644,21 +866,35 @@ def handle_image_upload():
     send_data['thumbnailhtml'] = render_template('one-image-thumbnail.html', image=image_data)
     new_app.emit('new-image-full', send_data, room='general-notifications')
     
-    
     return render_template('upload-image.html', error_str='', success_str=(url_for('send_user_image', img_name=img_filename)), cur_user=current_user)
-
 
 # send user images
 @app.route('/img/<img_name>')
 def send_user_image(img_name):
   return send_from_directory(app.config['UPLOAD_DIRECTORY'], img_name)
+     
+# handle connections
+@new_app.on('connect')
+def process_new_connnect():
+
+  # general notifications room
+  join_room(app.config['GENERAL_ROOM'])
+  
+  # now, user-specific room
+  # get the database if it does not exist
+  if not (app.config['DB_PARAM'] in g):
+    g.setdefault(app.config['DB_PARAM'], default=get_database(app.config['DB_NAME']))
+  db = g.get(app.config['DB_PARAM'])
+  db_cursor = db.cursor()
+  
+  # try to authenticate the user
+  check_session_token(db, db_cursor)
+  current_user = g.get(app.config['USER_PARAM'])
+  
+  if current_user:
+    join_room(app.config['USER_ROOM_PREFIX'] + str(current_user.id))
     
-# handle joining general rooms
-@new_app.on('join-general-room')
-def join_general_room():
-  join_room('general-notifications')
-
-
+    
 @app.cli.command('init-db')
 def init_database():
   try:
@@ -672,6 +908,23 @@ def init_database():
     db.close()
   except Exception as ex:
     sys.stderr.write('Error Setting Up Database\n')
+    raise ex
+    
+@app.cli.command('drop-db')
+def drop_database():
+
+  try:
+    if input('Are you sure you want to drop the database? (Type "yEs" to confirm): ') != 'yEs':
+      sys.stderr.write('Database not dropped.\n')
+      return
+   
+    db = get_database()
+    db_cursor = db.cursor()
+    db_cursor.execute('DROP DATABASE ' + app.config['DB_NAME'])
+    db.commit()
+    db.close()
+  except Exception as ex:
+    sys.stderr.write('Error Dropping Database\n')
     raise ex
   
 @app.teardown_appcontext

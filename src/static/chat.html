@@ -1,43 +1,42 @@
 <!DOCTYPE html>
 <html>
-    <head>
-        <meta charset="utf-8">
-        <title>Direct Messaging :: Image Planet</title>
-        <link rel="stylesheet" href="styles/styles.css">
-    </head>
-</html>
-<body>
+  <head>
+    <meta charset="utf-8">
+    <title>Direct Messaging :: Image Planet</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles/styles.css') }}">
+  </head>
+  <body>
     <header class="page-header">
-      <a class="site-name" href="index.html">Image Planet</a>
+      <a class="site-name" href="{{ url_for('generate_home_page') }}">Image Planet</a>
       <nav>
         <ul class="navigation">
-          <li><a href="images.html">Images</a></li>
-          <li><a href="users.html">Users</a></li>
-          <li><a href="upload-image.html">Upload Image</a></li>
+          <li><a href="{{ url_for('generate_image_gallery') }}">Images</a></li>
+          <li><a href="{{ url_for('generate_user_list') }}">Users</a></li>
+          <li><a href="{{ url_for('handle_image_upload') }}">Upload Image</a></li>
         </ul>
       </nav>
-      <a href="login.html">Login / Register</a>
+      <p class="header-user-text">Welcome <a href="{{ url_for('generate_user_page', user_id=cur_user.id) }}">{{ cur_user.name }}</a>! | <a href="{{ url_for('process_logout') }}">Logout</a></p>
     </header>
-      <main class="main-content-1-col">
-        <div class="section-dummy"></div>
-        <div class="section-main">
-          <div class="message-window">
+    <main class="main-content-1-col">
+      <div class="section-dummy"></div>
+      <div class="section-main">
+        <div class="message-window">
+          {% for dm in direct_messages %}
             <div class="message-block">
-              <p class="msg"><a href="users/1">User1</a>: Hey bro wassup? I love your cool pics you're posting on Image Planet.</p>
+              <p class="msg"><a href="{{ url_for('generate_user_page', user_id=dm.userid) }}">{{ dm.username }}</a>: {{ dm.msg }}</p>
             </div>
-            <div class="message-block">
-              <p class="msg"><a href="users/1">User2</a>: Yeah bruv it's the best I love Image Planet!!!!</p>
-            </div>
-          </div>
-          <div class="write-message-window">
-            <form action="/submit-dm" method="post">
+          {% end for %}
+        </div>
+        <div class="write-message-window">
+          <form action="{{ url_for('process_dm_message') }}" method="post">
             <label for="msg">Message:</label>
             <input type="text" id="msg" name="msg" size="50">
             <input type="submit" value="Send">
-            </form>
-          </div>
-          <br />
+          </form>
         </div>
-        <div class="section-dummy"></div>
-      </main>
-</body>
+        <br />
+      </div>
+      <div class="section-dummy"></div>
+    </main>
+  </body>
+</html>

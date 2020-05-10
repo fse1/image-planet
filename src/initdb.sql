@@ -20,7 +20,9 @@ CREATE TABLE IF NOT EXISTS comments (imageid BIGINT NOT NULL,
                                        comtext TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS directmsg (dmid BIGINT PRIMARY KEY AUTO_INCREMENT NOT NULL,
                                         lowuserid BIGINT NOT NULL,
-                                        highuserid BIGINT NOT NULL);
+                                        highuserid BIGINT NOT NULL,
+                                        lowuserread INT NOT NULL,
+                                        highuserread INT NOT NULL);
 CREATE TABLE IF NOT EXISTS messages (dmid BIGINT NOT NULL,
                                        userid BIGINT NOT NULL,
                                        msgtext TEXT NOT NULL);

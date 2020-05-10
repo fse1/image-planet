@@ -2,10 +2,10 @@
 <html>
   <head>
     <meta charset="utf-8">
-    <title>Direct Messaging :: Image Planet</title>
+    <title>Direct Messaging Listing :: Image Planet</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles/styles.css') }}">
     <script src="{{ url_for('static', filename='scripts/socket.io.js') }}"></script>
-    <script src="{{ url_for('static', filename='scripts/dm-script.js') }}"></script>
+    <script src="{{ url_for('static', filename='scripts/dm-cript.js') }}"></script>
     <script src="{{ url_for('static', filename='scripts/socet-dm.js') }}"></script>
   </head>
   <body>
@@ -20,30 +20,21 @@
       </nav>
       <div class="header-user-info">
         <p class="header-user-greeting">Welcome <a href="{{ url_for('generate_user_page', user_id=cur_user.id) }}">{{ cur_user.name }}</a>! | <a href="{{ url_for('process_logout') }}">Logout</a></p>
-        {% if cur_user.unread_messages %}
-        <p class="header-user-new-messages"><a href="{{ url_for('generate_direct_message_listing') }}">View New Messages</a></p>
-        {% else %}
-        <p class="header-user-messages"><a href="{{ url_for('generate_direct_message_listing') }}">View Messages</a></p>
-        {% endif %}
       </div>
     </header>
     <main class="main-content-1-col">
       <div class="section-dummy"></div>
       <div class="section-main">
-        <div class="message-window">
-          {% for dm in direct_messages %}
-            <div class="message-block">
-              <p class="msg"><a href="{{ url_for('generate_user_page', user_id=dm.userid) }}">{{ dm.username }}</a>: {{ dm.message }}</p>
-            </div>
+        <div class="dm-listing">
+          <ul>
+          {% for conversation in direct_message_list %}
+          {% if not conversation.empty %}
+          <li>{% if not conversation.read %} <span class="error-text">Unread Messages! - </span> {% endif %} <a href="{{  url_for('generate_direct_message_page', user_id=conversation.userid) }}">View Conversation</a> with <a href="{{ url_for('generate_user_page', user_id=conversation.userid) }}">{{ conversation.username }}</a></li>
+          {% endif %}
+          {% else %}
+          <li>You do not have any direct messages yet ):</li>
           {% endfor %}
-        </div>
-        <div class="write-message-window">
-          <form action="{{ url_for('process_dm_message') }}" method="post">
-            <input type="hidden" name="dmid" value="{{ dm_id }}" />
-            <label for="msg">Message:</label>
-            <input type="text" id="msg" name="msg" size="50">
-            <input type="submit" class="submit-dm-btn" value="Send">
-          </form>
+          </ul>
         </div>
         <br />
       </div>

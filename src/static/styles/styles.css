@@ -17,8 +17,18 @@ header.page-header {
   text-align: center;
 }
 
-header p.header-user-text {
+header p.header-user-greeting  {
   margin-top: 0px;
+  margin-bottom: 0.2rem;
+}
+
+header p.header-user-messages {
+  margin-top: 0px;
+}
+
+header p.header-user-new-messages {
+  margin-top: 0px;
+  background-color: #ff8080;
 }
 
 ul.navigation {
@@ -160,6 +170,10 @@ main .option-button {
 
 .error-text {
   color: #ff8080;
+}
+
+.error-background {
+  background-color: #ff8080;
 }
 
 .success-text {
