@@ -14,5 +14,6 @@ services:
       WAIT_HOSTS_TIMEOUT: 240
       DB_USER: someuser
       DB_PASS: change-this-password
+      DB_HOST: mariadb
     ports:
       - '8080:5000'

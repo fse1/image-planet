@@ -1,0 +1,6 @@
+# ignore cache
+__pycache__/
+
+# ignore any user-uploaded images
+/src/user-images/*
+!/src/user-images/dummy-file

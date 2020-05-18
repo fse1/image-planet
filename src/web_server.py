@@ -9,24 +9,26 @@ import hashlib
 import secrets
 import datetime
 
-# try and get the database password and username from env variable
+# try and get the database password, username, and host from env variable
 if not ('DB_USER' in os.environ):
   raise ValueError('Cannot find environment variable "DB_USER"')
 if not ('DB_PASS' in os.environ):
   raise ValueError('Cannot find environment variable "DB_PASS"')
+if not ('DB_HOST' in os.environ):
+  raise ValueError('Cannot find environment variable "DB_HOST"')
 
 # create and configure the Flask application
 app = Flask(__name__)
-app.config.update(DB_USER=(os.environ['DB_USER']), DB_HOST='mariadb', DB_PASS=(os.environ['DB_PASS']), DB_NAME='imageplanet', DB_PARAM='db')          # database information
-app.config['UPLOAD_DIRECTORY'] = 'user-images'                                                                                                        # upload image directory
-app.config['MAX_CONTENT_LENGTH'] = 15 * 1024 * 1024                                                                                                   # max file size (15 MB)
-app.config['MAX_COMMENT_LENGTH'] = 50                                                                                                                 # max length of comment
-app.config.update(SC_N=16384, SC_R=8, SC_P=1)                                                                                                         # scrypt parameters
-app.config.update(USERNAME_MIN=3, USERNAME_MAX=15, PASSWORD_MIN=8, PASSWORD_MAX=100)                                                                  # username and password length requirements
-app.config.update(PASS_SALT_SIZE=16, SESSION_TOKEN_SIZE=32, CSRF_TOKEN_SIZE=32, TOKEN_SALT=b'token', TOKEN_EXPIRATION=datetime.timedelta(days=7))     # security info
-app.config.update(SESSION_COOKIE_NAME='session-token', USER_PARAM='current_user')                                                                     # security info continued
-app.config.update(DEFAULT_PROFILE_PIC='default.jpg', DEFAULT_PROFILE_DESCRIPTION='No profile description.')                                           # default database fields
-app.config.update(USER_ROOM_PREFIX='user-', GENERAL_ROOM='general-notifications')                                                                     # socketio room information
+app.config.update(DB_USER=(os.environ['DB_USER']), DB_HOST=(os.environ['DB_HOST']), DB_PASS=(os.environ['DB_PASS']), DB_NAME='imageplanet', DB_PARAM='db')          # database information
+app.config['UPLOAD_DIRECTORY'] = 'user-images'                                                                                                                      # upload image directory
+app.config['MAX_CONTENT_LENGTH'] = 15 * 1024 * 1024                                                                                                                 # max file size (15 MB)
+app.config['MAX_COMMENT_LENGTH'] = 50                                                                                                                               # max length of comment
+app.config.update(SC_N=16384, SC_R=8, SC_P=1)                                                                                                                       # scrypt parameters
+app.config.update(USERNAME_MIN=3, USERNAME_MAX=15, PASSWORD_MIN=8, PASSWORD_MAX=100)                                                                                # username and password length requirements
+app.config.update(PASS_SALT_SIZE=16, SESSION_TOKEN_SIZE=32, CSRF_TOKEN_SIZE=32, TOKEN_SALT=b'token', TOKEN_EXPIRATION=datetime.timedelta(days=7))                   # security info
+app.config.update(SESSION_COOKIE_NAME='session-token', USER_PARAM='current_user')                                                                                   # security info continued
+app.config.update(DEFAULT_PROFILE_PIC='default.jpg', DEFAULT_PROFILE_DESCRIPTION='No profile description.')                                                         # default database fields
+app.config.update(USER_ROOM_PREFIX='user-', GENERAL_ROOM='general-notifications')                                                                                   # socketio room information
 new_app = SocketIO(app, cors_allowed_origins='*')
 
 
